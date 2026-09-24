@@ -1,0 +1,49 @@
+# Environment & Secrets (CRITICAL)
+.env
+.env.*
+!.env.example
+api_key
+*.key
+*.pem
+secrets.toml
+.streamlit/secrets.toml
+
+# Virtual Environments
+.venv/
+venv/
+ENV/
+env/
+env.bak/
+venv.bak/
+
+# Python Cache & Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# User Uploads & Generated Visualizations/Artifacts
+static/uploads/*
+!static/uploads/.gitkeep
+static/artifacts/*
+!static/artifacts/.gitkeep
+
+# Operating System & IDE Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Test / Scratch data
+scratch/
+test_data.csv
