@@ -40,6 +40,7 @@ LLM_MODEL = os.environ.get("COPILOT_LLM_MODEL", "gemini-3.6-flash")
 # --------------------------------------------------------------------------
 class CopilotState(TypedDict, total=False):
     dataset_path: str
+    selected_table: Optional[str]
     user_query: str
     schema_info: str
     generated_code: str
@@ -51,6 +52,36 @@ class CopilotState(TypedDict, total=False):
     artifact_path: Optional[str]
     artifact_png_path: Optional[str]
     success: bool
+
+
+def get_database_tables(path: str) -> list[str]:
+    """Inspect and return all available table names from an SQLite file or DB URI."""
+    if not path:
+        return []
+    lower = path.lower()
+    if lower.endswith((".db", ".sqlite", ".sqlite3")) or path.startswith("sqlite:"):
+        import sqlite3
+        clean_path = path.replace("sqlite:///", "").replace("sqlite://", "")
+        if not Path(clean_path).exists() and not path.startswith("sqlite:"):
+            return []
+        try:
+            conn = sqlite3.connect(clean_path)
+            cursor = conn.cursor()
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';")
+            tables = [row[0] for row in cursor.fetchall()]
+            conn.close()
+            return tables
+        except Exception:
+            return []
+    if path.startswith(("postgresql://", "postgres://", "mysql://")):
+        try:
+            import sqlalchemy
+            engine = sqlalchemy.create_engine(path)
+            inspector = sqlalchemy.inspect(engine)
+            return inspector.get_table_names()
+        except Exception:
+            return []
+    return []
 
 
 def _get_gemini_api_key() -> Optional[str]:
@@ -98,7 +129,7 @@ def get_llm(temperature: float = 0.1) -> ChatGoogleGenerativeAI:
 # --------------------------------------------------------------------------
 # Helpers
 # --------------------------------------------------------------------------
-def _load_dataframe(path: str) -> pd.DataFrame:
+def _load_dataframe(path: str, table_name: Optional[str] = None) -> pd.DataFrame:
     lower = path.lower()
     if lower.endswith(".csv"):
         return pd.read_csv(path)
@@ -106,15 +137,20 @@ def _load_dataframe(path: str) -> pd.DataFrame:
         return pd.read_json(path)
     if lower.endswith((".xlsx", ".xls")):
         return pd.read_excel(path)
-    if lower.endswith((".db", ".sqlite", ".sqlite3")):
+    if lower.endswith((".db", ".sqlite", ".sqlite3")) or path.startswith("sqlite:"):
         import sqlite3
-
-        conn = sqlite3.connect(path)
-        tables = pd.read_sql("SELECT name FROM sqlite_master WHERE type='table'", conn)
+        clean_path = path.replace("sqlite:///", "").replace("sqlite://", "")
+        conn = sqlite3.connect(clean_path)
+        tables = pd.read_sql("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'", conn)
         if tables.empty:
-            raise ValueError("SQLite file has no tables")
-        table_name = tables.iloc[0]["name"]
-        return pd.read_sql(f"SELECT * FROM {table_name}", conn)
+            raise ValueError("SQLite database has no tables")
+        tbl = table_name if table_name and table_name in tables["name"].values else tables.iloc[0]["name"]
+        return pd.read_sql(f'SELECT * FROM "{tbl}"', conn)
+    if path.startswith(("postgresql://", "postgres://", "mysql://")):
+        import sqlalchemy
+        engine = sqlalchemy.create_engine(path)
+        tbl = table_name or "data"
+        return pd.read_sql(f'SELECT * FROM "{tbl}"', engine)
     raise ValueError(f"Unsupported dataset type: {path}")
 
 
@@ -130,14 +166,22 @@ def _extract_code_block(llm_text: object) -> str:
 # Node: inspect_schema
 # --------------------------------------------------------------------------
 def inspect_schema(state: CopilotState) -> CopilotState:
-    df = _load_dataframe(state["dataset_path"])
+    selected_table = state.get("selected_table")
+    all_tables = get_database_tables(state["dataset_path"])
+    df = _load_dataframe(state["dataset_path"], table_name=selected_table)
 
     buf_dtypes = df.dtypes.astype(str).to_dict()
     null_counts = df.isnull().sum().to_dict()
     describe_numeric = df.describe(include="number").to_string() if not df.select_dtypes("number").empty else "N/A"
     head = df.head(5).to_string()
 
+    db_context = ""
+    if all_tables:
+        current_tbl = selected_table or all_tables[0]
+        db_context = f"Database Tables Found: {all_tables}\nCurrently Loaded Active Table: '{current_tbl}'\n\n"
+
     schema_info = (
+        f"{db_context}"
         f"Shape: {df.shape[0]} rows x {df.shape[1]} columns\n\n"
         f"Columns & dtypes:\n{json.dumps(buf_dtypes, indent=2)}\n\n"
         f"Null counts per column:\n{json.dumps(null_counts, indent=2)}\n\n"
@@ -186,6 +230,7 @@ def execute_code(state: CopilotState) -> CopilotState:
         code=state["generated_code"],
         dataset_path=state["dataset_path"],
         artifacts_dir=ARTIFACTS_DIR,
+        table_name=state.get("selected_table"),
     )
 
     execution_output = {
@@ -327,23 +372,25 @@ def build_graph():
     return graph.compile()
 
 
-def run_pipeline(dataset_path: str, user_query: str) -> CopilotState:
+def run_pipeline(dataset_path: str, user_query: str, selected_table: Optional[str] = None) -> CopilotState:
     """Convenience entrypoint for non-streaming (script / CLI) usage."""
     app = build_graph()
     initial_state: CopilotState = {
         "dataset_path": dataset_path,
+        "selected_table": selected_table,
         "user_query": user_query,
         "retry_count": 0,
     }
     return app.invoke(initial_state)
 
 
-def stream_pipeline(dataset_path: str, user_query: str):
+def stream_pipeline(dataset_path: str, user_query: str, selected_table: Optional[str] = None):
     """Generator used by the Streamlit UI to show live node-by-node status.
     Yields (node_name, state_after_node) tuples as the graph executes."""
     app = build_graph()
     initial_state: CopilotState = {
         "dataset_path": dataset_path,
+        "selected_table": selected_table,
         "user_query": user_query,
         "retry_count": 0,
     }

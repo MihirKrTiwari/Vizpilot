@@ -88,7 +88,7 @@ def _loader_snippet() -> str:
     script so the subprocess has zero dependency on this module's import
     path."""
     return '''
-def _load_df(path):
+def _load_df(path, table_name=None):
     import pandas as pd
     lower = path.lower()
     if lower.endswith(".csv"):
@@ -97,16 +97,22 @@ def _load_df(path):
         return pd.read_json(path)
     if lower.endswith((".xlsx", ".xls")):
         return pd.read_excel(path)
-    if lower.endswith((".db", ".sqlite", ".sqlite3")):
+    if lower.endswith((".db", ".sqlite", ".sqlite3")) or path.startswith("sqlite:"):
         import sqlite3
-        conn = sqlite3.connect(path)
+        clean_path = path.replace("sqlite:///", "").replace("sqlite://", "")
+        conn = sqlite3.connect(clean_path)
         tables = pd.read_sql(
-            "SELECT name FROM sqlite_master WHERE type='table'", conn
+            "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'", conn
         )
         if tables.empty:
-            raise ValueError("SQLite file has no tables")
-        table_name = tables.iloc[0]["name"]
-        return pd.read_sql(f"SELECT * FROM {table_name}", conn)
+            raise ValueError("SQLite database has no tables")
+        tbl = table_name if table_name and table_name in tables["name"].values else tables.iloc[0]["name"]
+        return pd.read_sql(f'SELECT * FROM "{tbl}"', conn)
+    if path.startswith(("postgresql://", "postgres://", "mysql://")):
+        import sqlalchemy
+        engine = sqlalchemy.create_engine(path)
+        tbl = table_name or "data"
+        return pd.read_sql(f'SELECT * FROM "{tbl}"', engine)
     raise ValueError(f"Unsupported dataset type: {path}")
 '''
 
@@ -116,6 +122,7 @@ def _build_runner_script(
     user_code: str,
     artifact_html_path: str,
     artifact_png_path: str,
+    table_name: Optional[str] = None,
 ) -> str:
     """Assembles the full standalone Python script that will be executed
     in the child process."""
@@ -135,10 +142,11 @@ import plotly.graph_objects as go
 {_loader_snippet()}
 
 DATASET_PATH = {dataset_path!r}
+SELECTED_TABLE = {table_name!r}
 ARTIFACT_HTML = {artifact_html_path!r}
 ARTIFACT_PNG = {artifact_png_path!r}
 
-df = _load_df(DATASET_PATH)
+df = _load_df(DATASET_PATH, SELECTED_TABLE)
 fig = None
 
 try:
@@ -188,6 +196,7 @@ def run_generated_code(
     artifacts_dir: str,
     timeout_seconds: int = DEFAULT_TIMEOUT_SECONDS,
     memory_limit_mb: int = DEFAULT_MEMORY_LIMIT_MB,
+    table_name: Optional[str] = None,
 ) -> ExecutionResult:
     """Execute `code` in an isolated subprocess against `dataset_path`.
 
@@ -216,6 +225,7 @@ def run_generated_code(
         user_code=code,
         artifact_html_path=artifact_html,
         artifact_png_path=artifact_png,
+        table_name=table_name,
     )
 
     script_path = artifacts_dir_path / f"_runner_{run_id}.py"

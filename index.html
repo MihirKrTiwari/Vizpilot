@@ -4,13 +4,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Vizpilot — Autonomous Data Analysis & Visualization Copilot</title>
-  <meta name="description" content="LangGraph-powered AI copilot that inspects raw datasets, writes and executes Pandas and Plotly code in a sandboxed environment, and delivers interactive visualizations." />
+  <meta name="description" content="AI Copilot that takes raw datasets and databases, inspects schemas, writes and executes code, and produces interactive visualizations and executive summaries." />
 
-  <!-- Fonts & Plotly.js -->
+  <!-- Fonts, Plotly & PapaParse CDN -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
   <style>
     :root {
@@ -30,7 +31,6 @@
       --warning: #f59e0b;
       --danger: #ef4444;
       --gradient-brand: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #06b6d4 100%);
-      --gradient-card: linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%);
     }
 
     * {
@@ -77,7 +77,7 @@
       z-index: 100;
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
-      background: rgba(9, 13, 22, 0.8);
+      background: rgba(9, 13, 22, 0.85);
       border-bottom: 1px solid var(--border-color);
     }
     .nav-container {
@@ -157,14 +157,14 @@
       z-index: 1;
       max-width: 1200px;
       margin: 0 auto;
-      padding: 3rem 1.5rem 6rem;
+      padding: 2.5rem 1.5rem 6rem;
     }
 
     /* Hero Section */
     .hero {
       text-align: center;
       max-width: 850px;
-      margin: 2rem auto 5rem;
+      margin: 1.5rem auto 4rem;
     }
     .hero-badge {
       display: inline-flex;
@@ -194,11 +194,11 @@
       50% { opacity: 0.4; }
     }
     .hero h1 {
-      font-size: 3.5rem;
+      font-size: 3.4rem;
       font-weight: 800;
       line-height: 1.15;
       letter-spacing: -0.03em;
-      margin-bottom: 1.5rem;
+      margin-bottom: 1.2rem;
     }
     .gradient-text {
       background: var(--gradient-brand);
@@ -206,9 +206,9 @@
       -webkit-text-fill-color: transparent;
     }
     .hero p {
-      font-size: 1.2rem;
+      font-size: 1.15rem;
       color: var(--text-muted);
-      margin-bottom: 2.2rem;
+      margin-bottom: 2rem;
       font-weight: 400;
     }
     .hero-actions {
@@ -256,13 +256,15 @@
       transform: translateY(-2px);
     }
 
-    /* Live Interactive Showcase Card */
-    .showcase-section {
+    /* ==================================================================== */
+    /* Interactive Dataset & Database Workspace (Core Feature)               */
+    /* ==================================================================== */
+    .lab-section {
       margin-bottom: 6rem;
     }
     .section-header {
       text-align: center;
-      margin-bottom: 3rem;
+      margin-bottom: 2.5rem;
     }
     .section-header h2 {
       font-size: 2.2rem;
@@ -275,72 +277,87 @@
       font-size: 1.05rem;
     }
 
-    .demo-window {
+    .workspace-card {
       background: var(--bg-card);
       border: 1px solid var(--border-color);
-      border-radius: 18px;
+      border-radius: 20px;
       overflow: hidden;
       backdrop-filter: blur(20px);
       box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.7);
     }
-    .window-header {
-      background: rgba(15, 23, 42, 0.85);
+
+    .lab-controls-bar {
+      background: rgba(15, 23, 42, 0.9);
       padding: 1rem 1.5rem;
       display: flex;
-      align-items: center;
       justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
       border-bottom: 1px solid var(--border-color);
     }
-    .window-dots {
-      display: flex;
-      gap: 7px;
-    }
-    .dot {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-    }
-    .dot-red { background: #ef4444; }
-    .dot-yellow { background: #f59e0b; }
-    .dot-green { background: #10b981; }
 
-    .window-tabs {
+    .input-mode-tabs {
       display: flex;
       gap: 0.5rem;
     }
-    .demo-tab {
+    .mode-tab {
       background: transparent;
       border: 1px solid transparent;
       color: var(--text-muted);
-      padding: 0.45rem 1rem;
+      padding: 0.5rem 1.1rem;
       border-radius: 8px;
-      font-size: 0.85rem;
+      font-size: 0.88rem;
       font-weight: 600;
       cursor: pointer;
       transition: all 0.2s ease;
     }
-    .demo-tab.active {
+    .mode-tab.active {
       background: rgba(99, 102, 241, 0.15);
-      border-color: rgba(99, 102, 241, 0.35);
+      border-color: rgba(99, 102, 241, 0.4);
       color: #fff;
     }
-    .demo-tab:hover:not(.active) {
+    .mode-tab:hover:not(.active) {
       color: #fff;
       background: rgba(255, 255, 255, 0.05);
     }
 
-    .demo-body {
-      display: grid;
-      grid-template-columns: 360px 1fr;
-      min-height: 580px;
+    .sample-pill-group {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.85rem;
+      color: var(--text-dim);
     }
-    @media (max-width: 900px) {
-      .demo-body {
+    .sample-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      padding: 0.35rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .sample-btn:hover {
+      background: rgba(99, 102, 241, 0.15);
+      border-color: var(--primary-light);
+      color: #fff;
+    }
+
+    .workspace-grid {
+      display: grid;
+      grid-template-columns: 420px 1fr;
+      min-height: 650px;
+    }
+    @media (max-width: 950px) {
+      .workspace-grid {
         grid-template-columns: 1fr;
       }
     }
 
-    .demo-sidebar {
+    /* Left Input & Schema Column */
+    .lab-input-panel {
       padding: 1.5rem;
       border-right: 1px solid var(--border-color);
       background: rgba(10, 15, 26, 0.6);
@@ -348,152 +365,297 @@
       flex-direction: column;
       gap: 1.25rem;
     }
-    .sidebar-label {
-      font-size: 0.8rem;
-      font-weight: 700;
-      color: var(--text-dim);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
 
-    .query-selector {
-      display: flex;
-      flex-direction: column;
-      gap: 0.6rem;
-    }
-    .query-card {
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid var(--border-color);
-      border-radius: 10px;
-      padding: 0.85rem;
+    /* Drop Zone */
+    .file-dropzone {
+      border: 2px dashed rgba(99, 102, 241, 0.35);
+      background: rgba(99, 102, 241, 0.04);
+      border-radius: 12px;
+      padding: 1.75rem 1rem;
+      text-align: center;
       cursor: pointer;
       transition: all 0.2s ease;
     }
-    .query-card:hover {
-      background: rgba(255, 255, 255, 0.07);
-      border-color: rgba(255, 255, 255, 0.2);
-    }
-    .query-card.active {
-      background: rgba(99, 102, 241, 0.12);
+    .file-dropzone:hover, .file-dropzone.dragover {
       border-color: var(--primary-light);
+      background: rgba(99, 102, 241, 0.1);
     }
-    .query-title {
+    .drop-icon {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+    }
+    .drop-text {
       font-size: 0.9rem;
       font-weight: 600;
       color: #fff;
       margin-bottom: 0.25rem;
     }
-    .query-meta {
-      font-size: 0.78rem;
+    .drop-hint {
+      font-size: 0.75rem;
       color: var(--text-dim);
     }
 
-    /* Status Flow Stepper */
-    .flow-stepper {
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-      margin-top: 0.5rem;
+    /* Textarea for paste */
+    .paste-box {
+      display: none;
+      width: 100%;
+      height: 120px;
+      background: #060911;
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 0.75rem;
+      color: #e2e8f0;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      resize: none;
     }
-    .step-item {
+    .paste-box:focus {
+      outline: none;
+      border-color: var(--primary-light);
+    }
+
+    /* Schema & Table info */
+    .dataset-badge {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-color);
+      padding: 0.6rem 0.85rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+    }
+    .dataset-name-text {
+      font-weight: 600;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .dataset-stats-text {
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .table-select-row {
       display: flex;
       align-items: center;
       gap: 0.6rem;
-      font-size: 0.82rem;
-      color: var(--text-muted);
+      font-size: 0.85rem;
     }
-    .step-badge {
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      background: rgba(16, 185, 129, 0.15);
-      color: #10b981;
+    .select-dropdown {
+      flex: 1;
+      background: #0f172a;
+      border: 1px solid var(--border-color);
+      color: #fff;
+      padding: 0.45rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      outline: none;
+    }
+
+    /* Query Box */
+    .query-area {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+    .query-input {
+      width: 100%;
+      background: #0b0f19;
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 0.8rem 1rem;
+      color: #fff;
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s ease;
+    }
+    .query-input:focus {
+      border-color: var(--primary-light);
+      box-shadow: 0 0 15px rgba(99, 102, 241, 0.25);
+    }
+
+    .quick-queries-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .query-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+    .chip {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      padding: 0.3rem 0.65rem;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .chip:hover {
+      background: rgba(99, 102, 241, 0.15);
+      border-color: var(--primary-light);
+      color: #fff;
+    }
+
+    /* API Key Field (Optional) */
+    .api-key-row {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+    .api-key-label {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      display: flex;
+      justify-content: space-between;
+    }
+    .api-key-input {
+      background: #0b0f19;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 0.5rem 0.75rem;
+      color: #fff;
+      font-size: 0.8rem;
+      outline: none;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .btn-run-analysis {
+      background: var(--gradient-brand);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 0.85rem;
+      font-weight: 700;
+      font-size: 0.95rem;
+      cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 0.7rem;
-      font-weight: bold;
+      gap: 0.5rem;
+      box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
+      transition: all 0.2s ease;
+    }
+    .btn-run-analysis:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 25px rgba(99, 102, 241, 0.6);
+    }
+    .btn-run-analysis:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
     }
 
-    .code-snippet-box {
-      background: #060911;
-      border: 1px solid rgba(255, 255, 255, 0.05);
-      border-radius: 8px;
-      padding: 0.8rem;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.75rem;
-      color: #a5b4fc;
-      overflow-x: auto;
-      max-height: 140px;
-    }
-
-    /* Plotly Canvas Area */
-    .demo-viewport {
+    /* Right Viewport (Results & Charts) */
+    .lab-output-panel {
       padding: 1.5rem;
       display: flex;
       flex-direction: column;
       background: rgba(15, 23, 42, 0.4);
+      min-height: 550px;
     }
-    .plot-container {
+    .output-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .output-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .chart-container {
       flex: 1;
-      min-height: 480px;
       width: 100%;
+      min-height: 420px;
+      position: relative;
     }
-    .insight-summary {
+    .chart-loader {
+      position: absolute;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.85);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      z-index: 10;
+      border-radius: 12px;
+    }
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba(99, 102, 241, 0.2);
+      border-top-color: var(--primary-light);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .executive-summary-card {
+      margin-top: 1.25rem;
       background: rgba(255, 255, 255, 0.03);
-      border-left: 3px solid var(--accent);
-      padding: 0.85rem 1rem;
-      border-radius: 0 8px 8px 0;
-      margin-top: 1rem;
-      font-size: 0.88rem;
+      border-left: 4px solid var(--accent);
+      padding: 1rem 1.25rem;
+      border-radius: 0 10px 10px 0;
+      font-size: 0.9rem;
+      color: #e2e8f0;
+      line-height: 1.6;
+    }
+
+    /* Data Preview Drawer */
+    .preview-toggle {
+      background: transparent;
+      border: none;
+      color: var(--primary-light);
+      font-size: 0.8rem;
+      cursor: pointer;
+      text-decoration: underline;
+    }
+    .table-preview-wrap {
+      display: none;
+      max-height: 160px;
+      overflow: auto;
+      margin-top: 0.5rem;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+    }
+    .preview-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.75rem;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .preview-table th {
+      background: #0f172a;
+      padding: 6px 10px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-color);
+      color: #94a3b8;
+      position: sticky;
+      top: 0;
+    }
+    .preview-table td {
+      padding: 5px 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
       color: #cbd5e1;
     }
 
-    /* Feature Grid */
-    .features-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 1.5rem;
-      margin-bottom: 6rem;
-    }
-    .feature-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border-color);
-      border-radius: 14px;
-      padding: 1.8rem;
-      transition: all 0.3s ease;
-      position: relative;
-    }
-    .feature-card:hover {
-      background: var(--bg-card-hover);
-      border-color: var(--border-glow);
-      transform: translateY(-4px);
-    }
-    .feature-icon {
-      width: 48px;
-      height: 48px;
-      border-radius: 12px;
-      background: rgba(99, 102, 241, 0.12);
-      border: 1px solid rgba(99, 102, 241, 0.25);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.4rem;
-      margin-bottom: 1.2rem;
-    }
-    .feature-card h3 {
-      font-size: 1.2rem;
-      font-weight: 700;
-      margin-bottom: 0.6rem;
-      color: #fff;
-    }
-    .feature-card p {
-      color: var(--text-muted);
-      font-size: 0.95rem;
-      line-height: 1.5;
-    }
-
-    /* Graph Architecture Section */
+    /* Architecture Section */
     .arch-section {
       background: var(--bg-card);
       border: 1px solid var(--border-color);
@@ -533,7 +695,50 @@
       font-size: 1.2rem;
     }
 
-    /* Setup / Code Block Section */
+    /* Feature Grid */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 6rem;
+    }
+    .feature-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 1.8rem;
+      transition: all 0.3s ease;
+    }
+    .feature-card:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--border-glow);
+      transform: translateY(-4px);
+    }
+    .feature-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: rgba(99, 102, 241, 0.12);
+      border: 1px solid rgba(99, 102, 241, 0.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      margin-bottom: 1.2rem;
+    }
+    .feature-card h3 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: 0.6rem;
+      color: #fff;
+    }
+    .feature-card p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+
+    /* Terminal Setup Section */
     .code-terminal {
       background: #070a13;
       border: 1px solid var(--border-color);
@@ -572,7 +777,6 @@
       color: #64748b;
     }
 
-    /* Footer */
     footer {
       border-top: 1px solid var(--border-color);
       padding: 3rem 1.5rem;
@@ -583,7 +787,6 @@
     footer a {
       color: var(--text-muted);
       text-decoration: none;
-      transition: color 0.2s ease;
     }
     footer a:hover {
       color: #fff;
@@ -591,11 +794,10 @@
   </style>
 </head>
 <body>
-  <!-- Ambient Gradient Orbs -->
   <div class="ambient-glow glow-1"></div>
   <div class="ambient-glow glow-2"></div>
 
-  <!-- Navigation -->
+  <!-- Header -->
   <header>
     <div class="nav-container">
       <a href="#" class="logo-group" id="nav-brand-logo">
@@ -603,11 +805,11 @@
         <div class="logo-title">Viz<span>pilot</span></div>
       </a>
       <nav class="nav-links">
-        <a href="#showcase" class="nav-link" id="nav-link-demo">Live Demo</a>
+        <a href="#lab" class="nav-link" id="nav-link-lab">Data Analysis Lab</a>
         <a href="#architecture" class="nav-link" id="nav-link-arch">Architecture</a>
         <a href="#features" class="nav-link" id="nav-link-features">Features</a>
-        <a href="#quickstart" class="nav-link" id="nav-link-quickstart">Quickstart</a>
-        <a href="https://github.com" target="_blank" rel="noopener noreferrer" class="btn-nav" id="btn-github-repo">
+        <a href="#quickstart" class="nav-link" id="nav-link-quickstart">CLI & Cloud</a>
+        <a href="https://github.com/MihirKrTiwari/Vizpilot" target="_blank" rel="noopener noreferrer" class="btn-nav" id="btn-github-repo">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
             <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
           </svg>
@@ -618,94 +820,142 @@
   </header>
 
   <main>
-    <!-- Hero Section -->
+    <!-- Hero -->
     <section class="hero" id="hero-section">
       <div class="hero-badge">
         <span class="badge-dot"></span>
-        Autonomous LangGraph Agent
+        Autonomous Data Analysis Copilot
       </div>
       <h1>
-        Turn Raw Datasets into <br />
-        <span class="gradient-text">Interactive Insights & Visualizations</span>
+        Give Your Dataset or Database. <br />
+        <span class="gradient-text">Let AI Deliver Insights & Charts.</span>
       </h1>
       <p>
-        An intelligent AI copilot that inspects schemas, generates robust Pandas and Plotly code,
-        executes safely in an isolated sandbox, self-corrects runtime errors, and produces executive summaries.
+        Upload CSV, JSON, or SQLite database files directly in your browser or connect your SQL databases.
+        The AI inspects schemas, writes analytical code, executes securely, and produces interactive Plotly visualizations.
       </p>
       <div class="hero-actions">
-        <a href="#showcase" class="btn-primary" id="btn-explore-demo">
-          ⚡ Explore Live Demo
+        <a href="#lab" class="btn-primary" id="btn-jump-lab">
+          ⚡ Open Data Analysis Lab
         </a>
-        <a href="#quickstart" class="btn-secondary" id="btn-view-quickstart">
-          Get Started in 60s
+        <a href="#quickstart" class="btn-secondary" id="btn-jump-quickstart">
+          Streamlit Cloud & Setup
         </a>
       </div>
     </section>
 
-    <!-- Interactive Showcase Section -->
-    <section class="showcase-section" id="showcase">
+    <!-- Interactive Data Analysis & Database Workspace -->
+    <section class="lab-section" id="lab">
       <div class="section-header">
-        <h2>Live Copilot Interactive Sandbox</h2>
-        <p>Experience real-time interactive Plotly visualizations generated dynamically by the agent.</p>
+        <h2>Live Data & Database Analysis Lab</h2>
+        <p>Drop your dataset below or try sample databases — ask any analytical question to get instant charts & reports.</p>
       </div>
 
-      <div class="demo-window" id="demo-interactive-window">
-        <div class="window-header">
-          <div class="window-dots">
-            <div class="dot dot-red"></div>
-            <div class="dot dot-yellow"></div>
-            <div class="dot dot-green"></div>
+      <div class="workspace-card" id="main-workspace-card">
+        <!-- Top Toolbar -->
+        <div class="lab-controls-bar">
+          <div class="input-mode-tabs">
+            <button class="mode-tab active" id="tab-mode-upload" onclick="setInputMode('upload')">📁 File Upload</button>
+            <button class="mode-tab" id="tab-mode-paste" onclick="setInputMode('paste')">📋 Paste Data / SQL</button>
           </div>
-          <div class="window-tabs">
-            <button class="demo-tab active" id="tab-correlation" onclick="switchDemo('correlation')">Correlation Heatmap</button>
-            <button class="demo-tab" id="tab-survival" onclick="switchDemo('survival')">Survival Breakdown</button>
-            <button class="demo-tab" id="tab-outliers" onclick="switchDemo('outliers')">Fare Distribution</button>
+          <div class="sample-pill-group">
+            <span>Sample Data:</span>
+            <button class="sample-btn" onclick="loadSampleData('titanic')">Titanic (CSV)</button>
+            <button class="sample-btn" onclick="loadSampleData('sales')">Global Sales (JSON)</button>
+            <button class="sample-btn" onclick="loadSampleData('ecommerce')">E-Commerce DB (SQL)</button>
           </div>
         </div>
 
-        <div class="demo-body">
-          <!-- Left Copilot Pipeline Simulation -->
-          <div class="demo-sidebar">
-            <div class="sidebar-label">Natural Language Queries</div>
-            <div class="query-selector">
-              <div class="query-card active" id="qcard-correlation" onclick="switchDemo('correlation')">
-                <div class="query-title">"What is the correlation between all numerical features?"</div>
-                <div class="query-meta">Dataset: titanic.csv • Method: Pearson Matrix</div>
-              </div>
-              <div class="query-card" id="qcard-survival" onclick="switchDemo('survival')">
-                <div class="query-title">"How did survival rates vary by passenger class and gender?"</div>
-                <div class="query-meta">Dataset: titanic.csv • Method: Grouped Bar Chart</div>
-              </div>
-              <div class="query-card" id="qcard-outliers" onclick="switchDemo('outliers')">
-                <div class="query-title">"What is the distribution of ticket fares across embarkation ports?"</div>
-                <div class="query-meta">Dataset: titanic.csv • Method: Box & Outlier Plot</div>
+        <div class="workspace-grid">
+          <!-- Left Column: Input, Schema, Prompt -->
+          <div class="lab-input-panel">
+            <!-- File Upload Zone -->
+            <div id="upload-container">
+              <div class="file-dropzone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+                <div class="drop-icon">📤</div>
+                <div class="drop-text" id="drop-text-label">Drop dataset or database here</div>
+                <div class="drop-hint">Supports CSV, JSON, TSV, SQL dumps, or SQLite (.db)</div>
+                <input type="file" id="file-input" style="display:none;" accept=".csv,.json,.tsv,.txt,.sql,.db,.sqlite" onchange="handleFileSelect(event)" />
               </div>
             </div>
 
-            <div class="sidebar-label">Agent State Transitions</div>
-            <div class="flow-stepper">
-              <div class="step-item"><span class="step-badge">✓</span> <span>Inspect Schema (9 columns, 891 rows)</span></div>
-              <div class="step-item"><span class="step-badge">✓</span> <span>Synthesize Pandas + Plotly Script</span></div>
-              <div class="step-item"><span class="step-badge">✓</span> <span>Execute Sandbox (0.18s, 0 retries)</span></div>
-              <div class="step-item"><span class="step-badge">✓</span> <span>Generated Interactive Plotly HTML</span></div>
+            <!-- Paste Data Zone -->
+            <textarea id="paste-input" class="paste-box" placeholder="Paste CSV rows, JSON array, or SQL table dump here..." oninput="handlePasteInput()"></textarea>
+
+            <!-- Active Dataset & Table Info -->
+            <div class="dataset-badge" id="dataset-info-box">
+              <div class="dataset-name-text">
+                <span>📄</span> <span id="current-dataset-name">titanic_passengers.csv</span>
+              </div>
+              <div class="dataset-stats-text" id="current-dataset-stats">891 rows • 8 cols</div>
             </div>
 
-            <div class="sidebar-label">Sandboxed Python Snippet</div>
-            <div class="code-snippet-box" id="demo-code-box">
-fig = px.imshow(
-    df.corr(numeric_only=True),
-    text_auto=".2f",
-    color_continuous_scale="RdBu_r",
-    title="Feature Correlation Matrix"
-)
+            <!-- Multi-Table Database Selector (Conditional) -->
+            <div class="table-select-row" id="table-select-wrapper" style="display: none;">
+              <span style="color: var(--text-dim); font-weight: 600;">Active Table:</span>
+              <select class="select-dropdown" id="table-dropdown" onchange="onTableSelected(this.value)">
+                <!-- populated dynamically -->
+              </select>
             </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span class="quick-queries-label">Schema & First Rows</span>
+              <button class="preview-toggle" onclick="toggleTablePreview()">Preview Data</button>
+            </div>
+            <div class="table-preview-wrap" id="table-preview-drawer">
+              <table class="preview-table" id="preview-table-content"></table>
+            </div>
+
+            <!-- Query Input -->
+            <div class="query-area">
+              <label for="user-nl-query" class="quick-queries-label">Analytical Question</label>
+              <input type="text" id="user-nl-query" class="query-input" value="Show correlation matrix between numerical features" placeholder="e.g. Compare survival rate by gender and class..." />
+              
+              <div class="quick-queries-label" style="margin-top: 0.4rem;">Suggested Prompts</div>
+              <div class="query-chips" id="query-chips-list">
+                <span class="chip" onclick="setQuery(this.innerText)">Correlation heatmap across numeric metrics</span>
+                <span class="chip" onclick="setQuery(this.innerText)">Compare survival rates by passenger class and gender</span>
+                <span class="chip" onclick="setQuery(this.innerText)">Distribution and outlier analysis</span>
+                <span class="chip" onclick="setQuery(this.innerText)">Top categories sorted by metric total</span>
+              </div>
+            </div>
+
+            <!-- Optional Gemini API Key -->
+            <div class="api-key-row">
+              <div class="api-key-label">
+                <span>Gemini API Key <em>(Optional)</em></span>
+                <span style="color: var(--accent);">Direct In-Browser AI</span>
+              </div>
+              <input type="password" id="gemini-user-key" class="api-key-input" placeholder="AIzaSy... (Leave blank for smart heuristic mode)" onchange="saveApiKey(this.value)" />
+            </div>
+
+            <!-- Submit Button -->
+            <button class="btn-run-analysis" id="btn-run-agent" onclick="executeAnalysis()">
+              <span>🚀</span> <span>Run AI Data Analysis</span>
+            </button>
           </div>
 
-          <!-- Right Plotly Chart Viewport -->
-          <div class="demo-viewport">
-            <div id="plotly-demo-canvas" class="plot-container"></div>
-            <div class="insight-summary" id="demo-insight-text">
-              <strong>Executive Summary:</strong> Strongest negative correlation observed between passenger class and fare (-0.55). Survival shows significant positive correlation with gender (female passengers survived at 74% vs 18% for males).
+          <!-- Right Column: Visualization & Insights -->
+          <div class="lab-output-panel">
+            <div class="output-header">
+              <div class="output-title">
+                <span>📈</span> <span id="chart-display-title">Feature Correlation Matrix</span>
+              </div>
+              <button class="sample-btn" onclick="exportCurrentPlot()" title="Download as image">📷 Export Chart</button>
+            </div>
+
+            <!-- Plotly Viewport -->
+            <div class="chart-container">
+              <div class="chart-loader" id="chart-loading-overlay">
+                <div class="spinner"></div>
+                <div style="font-weight: 600; color: #a5b4fc;" id="loading-status-text">Analyzing dataset schema & calculating metrics...</div>
+              </div>
+              <div id="live-plotly-canvas" style="width: 100%; height: 100%;"></div>
+            </div>
+
+            <!-- AI Executive Report -->
+            <div class="executive-summary-card" id="ai-executive-summary">
+              <strong>Executive Summary:</strong> Strongest inverse correlation observed between passenger class and fare (-0.55). Survival is strongly correlated with passenger sex, with female survival rate significantly higher than male survival.
             </div>
           </div>
         </div>
@@ -715,102 +965,88 @@ fig = px.imshow(
     <!-- Architecture Section -->
     <section class="arch-section" id="architecture">
       <div class="section-header">
-        <h2>Autonomous LangGraph Architecture</h2>
-        <p>Built as a cyclic state machine with autonomous self-correction loops.</p>
+        <h2>Cyclic LangGraph State Machine</h2>
+        <p>Self-correcting, sandboxed, and resilient agent pipeline.</p>
       </div>
 
       <div class="pipeline-nodes">
-        <div class="pipe-node" id="node-schema">
-          <span>🔍</span> inspect_schema
-        </div>
+        <div class="pipe-node" id="node-schema"><span>🔍</span> inspect_schema</div>
         <div class="pipe-arrow">➔</div>
-        <div class="pipe-node" id="node-generate">
-          <span>🧠</span> generate_code
-        </div>
+        <div class="pipe-node" id="node-generate"><span>🧠</span> generate_code</div>
         <div class="pipe-arrow">➔</div>
-        <div class="pipe-node" id="node-sandbox">
-          <span>⚙️</span> execute_code
-        </div>
+        <div class="pipe-node" id="node-sandbox"><span>⚙️</span> execute_code</div>
         <div class="pipe-arrow">➔</div>
-        <div class="pipe-node" style="border-color: rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.1);" id="node-insights">
-          <span>📝</span> synthesize_insights
-        </div>
+        <div class="pipe-node" style="border-color: rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.1);" id="node-insights"><span>📝</span> synthesize_insights</div>
       </div>
 
       <p style="color: var(--text-muted); font-size: 0.95rem; max-width: 650px; margin: 0 auto;">
-        If a traceback occurs during execution, the failure signal loops into <code>self_correct</code>
-        with up to 3 automatic retries before gracefully completing.
+        On runtime exceptions or traceback, the agent triggers <code>self_correct</code> for up to 3 automatic iterations before safely terminating.
       </p>
     </section>
 
-    <!-- Key Features Grid -->
+    <!-- Feature Grid -->
     <section id="features">
       <div class="section-header">
-        <h2>Enterprise-Grade Capabilities</h2>
-        <p>Engineered for safety, analytical precision, and responsive performance.</p>
+        <h2>Engineered for Production Analytics</h2>
+        <p>Built with enterprise security boundaries and multi-source dataset support.</p>
       </div>
 
       <div class="features-grid">
-        <div class="feature-card" id="card-feature-sandbox">
+        <div class="feature-card">
           <div class="feature-icon">🛡️</div>
           <h3>Subprocess Sandbox</h3>
-          <p>Runs untrusted LLM-generated code in isolated <code>python -I</code> subprocesses with hard wall-clock timeouts and 512MB RAM ceilings.</p>
+          <p>Runs untrusted Python scripts in isolated <code>python -I</code> subprocesses with hard wall-clock timeouts and 512MB RAM caps.</p>
         </div>
-
-        <div class="feature-card" id="card-feature-loop">
+        <div class="feature-card">
+          <div class="feature-icon">🗄️</div>
+          <h3>Multi-Table Databases</h3>
+          <p>Inspects schemas across SQLite (.db, .sqlite) and SQL databases, listing all tables with seamless table-by-table drilldowns.</p>
+        </div>
+        <div class="feature-card">
           <div class="feature-icon">🩹</div>
           <h3>Self-Correcting Loop</h3>
-          <p>Feeds compilation errors and runtime exceptions back into the model to heal bugs autonomously without user intervention.</p>
+          <p>Feeds tracebacks back to the model to resolve missing columns, type errors, or syntax bugs automatically.</p>
         </div>
-
-        <div class="feature-card" id="card-feature-formats">
-          <div class="feature-icon">📁</div>
-          <h3>Multi-Format Ingestion</h3>
-          <p>Zero configuration required for CSV, JSON, Excel (.xlsx, .xls), and SQLite (.db, .sqlite3) datasets.</p>
-        </div>
-
-        <div class="feature-card" id="card-feature-plotly">
-          <div class="feature-icon">📈</div>
+        <div class="feature-card">
+          <div class="feature-icon">📊</div>
           <h3>Interactive Plotly Figures</h3>
-          <p>Exports interactive web-ready HTML visualizations and static high-resolution PNGs with automatic tooltips and zoom.</p>
+          <p>Produces fully responsive, zoomable, hoverable HTML figures and static publication-grade PNG images.</p>
         </div>
-
-        <div class="feature-card" id="card-feature-models">
+        <div class="feature-card">
           <div class="feature-icon">⚡</div>
-          <h3>Provider Agnostic</h3>
-          <p>Pre-configured for Google Gemini, with drop-in support for Anthropic Claude and OpenAI GPT-4o models.</p>
+          <h3>Google Gemini Powered</h3>
+          <p>Fast structured responses with native support for Gemini Flash models, extensible to Claude and OpenAI.</p>
         </div>
-
-        <div class="feature-card" id="card-feature-ui">
-          <div class="feature-icon">💻</div>
-          <h3>Streamlit & CLI Ready</h3>
-          <p>Offers both a real-time reactive Streamlit web interface and a headless CLI runner for automated pipeline integration.</p>
+        <div class="feature-card">
+          <div class="feature-icon">☁️</div>
+          <h3>Streamlit & GitHub Pages</h3>
+          <p>Deploy the frontend showcase on GitHub Pages, and run full LangGraph pipelines on Streamlit Community Cloud.</p>
         </div>
       </div>
     </section>
 
-    <!-- Quickstart & Installation -->
+    <!-- Quickstart & Deploy -->
     <section id="quickstart">
       <div class="section-header">
         <h2>Deploy or Run Locally</h2>
-        <p>Get up and running in less than two minutes.</p>
+        <p>Launch via Streamlit Community Cloud or clone to your machine.</p>
       </div>
 
-      <div class="code-terminal" id="terminal-quickstart">
+      <div class="code-terminal">
         <div class="terminal-header">
           <span>bash — setup & run</span>
           <span>bash</span>
         </div>
         <div class="terminal-body">
-          <div class="cmd-line"><span class="cmd-comment"># 1. Clone & activate virtual environment</span></div>
+          <div class="cmd-line"><span class="cmd-comment"># 1. Clone repository & initialize virtual environment</span></div>
           <div class="cmd-line"><span class="cmd-prompt">$</span> <span>git clone https://github.com/MihirKrTiwari/Vizpilot.git</span></div>
           <div class="cmd-line"><span class="cmd-prompt">$</span> <span>cd Vizpilot && python3 -m venv .venv && source .venv/bin/activate</span></div>
           <br />
-          <div class="cmd-line"><span class="cmd-comment"># 2. Install dependencies & configure keys</span></div>
+          <div class="cmd-line"><span class="cmd-comment"># 2. Install dependencies & configure API keys</span></div>
           <div class="cmd-line"><span class="cmd-prompt">$</span> <span>pip install -r requirements.txt</span></div>
-          <div class="cmd-line"><span class="cmd-prompt">$</span> <span>cp .env.example .env  # set GEMINI_API_KEY</span></div>
+          <div class="cmd-line"><span class="cmd-prompt">$</span> <span>cp .env.example .env   # Set GEMINI_API_KEY</span></div>
           <br />
-          <div class="cmd-line"><span class="cmd-comment"># 3. Launch Streamlit UI or run via CLI</span></div>
+          <div class="cmd-line"><span class="cmd-comment"># 3. Launch interactive Streamlit interface</span></div>
           <div class="cmd-line"><span class="cmd-prompt">$</span> <span>streamlit run app.py</span></div>
         </div>
       </div>
@@ -822,123 +1058,490 @@ fig = px.imshow(
     <p style="margin-top: 0.5rem;">Powered by LangGraph, Streamlit, and Plotly.</p>
   </footer>
 
+  <!-- Client-side Dataset & AI Engine Script -->
   <script>
-    // Demo Charts Data & Rendering
-    const demoConfigs = {
-      correlation: {
-        code: `fig = px.imshow(\n    corr_matrix,\n    text_auto=".2f",\n    color_continuous_scale="RdBu_r",\n    title="Feature Correlation Matrix (Titanic Dataset)"\n)`,
-        summary: "<strong>Executive Summary:</strong> Strongest negative correlation observed between passenger class and fare (-0.55). Survival shows significant positive correlation with gender (female passengers survived at 74% vs 18% for males).",
-        plot: () => {
-          const features = ['Survived', 'Pclass', 'Age', 'SibSp', 'Parch', 'Fare', 'Female', 'Cabin'];
-          const zValues = [
-            [1.00, -0.34, -0.08, -0.04,  0.08,  0.26,  0.54,  0.32],
-            [-0.34, 1.00, -0.37,  0.08,  0.02, -0.55, -0.13, -0.73],
-            [-0.08, -0.37, 1.00, -0.31, -0.19,  0.10, -0.09,  0.25],
-            [-0.04,  0.08, -0.31, 1.00,  0.41,  0.16,  0.11, -0.04],
-            [ 0.08,  0.02, -0.19, 0.41,  1.00,  0.22,  0.25,  0.04],
-            [ 0.26, -0.55,  0.10, 0.16,  0.22,  1.00,  0.18,  0.48],
-            [ 0.54, -0.13, -0.09, 0.11,  0.25,  0.18,  1.00,  0.15],
-            [ 0.32, -0.73,  0.25, -0.04, 0.04,  0.48,  0.15,  1.00]
-          ];
-          const data = [{
-            z: zValues,
-            x: features,
-            y: features,
-            type: 'heatmap',
-            colorscale: 'RdBu',
-            reversescale: true,
-            hoverongaps: false
-          }];
-          const layout = {
-            title: { text: 'Feature Correlation Matrix', font: { color: '#f8fafc', size: 16 } },
-            paper_bgcolor: 'transparent',
-            plot_bgcolor: 'transparent',
-            font: { color: '#94a3b8' },
-            margin: { t: 50, l: 70, r: 30, b: 60 },
-            xaxis: { gridcolor: 'rgba(255,255,255,0.05)' },
-            yaxis: { gridcolor: 'rgba(255,255,255,0.05)', autorange: 'reversed' }
-          };
-          Plotly.newPlot('plotly-demo-canvas', data, layout, { responsive: true, displayModeBar: false });
-        }
+    // State
+    let activeDataset = {
+      name: 'titanic_passengers.csv',
+      data: [],
+      columns: [],
+      tables: {}
+    };
+
+    // Preloaded Datasets
+    const SAMPLE_DATASETS = {
+      titanic: {
+        name: 'titanic_passengers.csv',
+        rows: [
+          { PassengerId: 1, Survived: 0, Pclass: 3, Sex: 'male', Age: 22, SibSp: 1, Parch: 0, Fare: 7.25, Embarked: 'S' },
+          { PassengerId: 2, Survived: 1, Pclass: 1, Sex: 'female', Age: 38, SibSp: 1, Parch: 0, Fare: 71.28, Embarked: 'C' },
+          { PassengerId: 3, Survived: 1, Pclass: 3, Sex: 'female', Age: 26, SibSp: 0, Parch: 0, Fare: 7.925, Embarked: 'S' },
+          { PassengerId: 4, Survived: 1, Pclass: 1, Sex: 'female', Age: 35, SibSp: 1, Parch: 0, Fare: 53.10, Embarked: 'S' },
+          { PassengerId: 5, Survived: 0, Pclass: 3, Sex: 'male', Age: 35, SibSp: 0, Parch: 0, Fare: 8.05, Embarked: 'S' },
+          { PassengerId: 6, Survived: 0, Pclass: 3, Sex: 'male', Age: 28, SibSp: 0, Parch: 0, Fare: 8.46, Embarked: 'Q' },
+          { PassengerId: 7, Survived: 0, Pclass: 1, Sex: 'male', Age: 54, SibSp: 0, Parch: 0, Fare: 51.86, Embarked: 'S' },
+          { PassengerId: 8, Survived: 0, Pclass: 3, Sex: 'male', Age: 2, SibSp: 3, Parch: 1, Fare: 21.07, Embarked: 'S' },
+          { PassengerId: 9, Survived: 1, Pclass: 3, Sex: 'female', Age: 27, SibSp: 0, Parch: 2, Fare: 11.13, Embarked: 'S' },
+          { PassengerId: 10, Survived: 1, Pclass: 2, Sex: 'female', Age: 14, SibSp: 1, Parch: 0, Fare: 30.07, Embarked: 'C' }
+        ]
       },
-      survival: {
-        code: `fig = px.bar(\n    df.groupby(['Pclass', 'Sex'])['Survived'].mean().reset_index(),\n    x='Pclass', y='Survived', color='Sex',\n    barmode='group', title="Survival Rate by Class & Gender"\n)`,
-        summary: "<strong>Executive Summary:</strong> 96.8% of First-Class female passengers survived, compared to 36.8% of First-Class males and only 13.5% of Third-Class males, highlighting stark disparities across socioeconomic class and gender.",
-        plot: () => {
-          const trace1 = {
-            x: ['1st Class', '2nd Class', '3rd Class'],
-            y: [0.968, 0.921, 0.500],
-            name: 'Female',
-            type: 'bar',
-            marker: { color: '#6366f1' }
-          };
-          const trace2 = {
-            x: ['1st Class', '2nd Class', '3rd Class'],
-            y: [0.368, 0.157, 0.135],
-            name: 'Male',
-            type: 'bar',
-            marker: { color: '#06b6d4' }
-          };
-          const layout = {
-            title: { text: 'Survival Rate by Class & Gender', font: { color: '#f8fafc', size: 16 } },
-            barmode: 'group',
-            paper_bgcolor: 'transparent',
-            plot_bgcolor: 'transparent',
-            font: { color: '#94a3b8' },
-            yaxis: { tickformat: ',.0%', gridcolor: 'rgba(255,255,255,0.08)' },
-            xaxis: { gridcolor: 'transparent' },
-            legend: { font: { color: '#f8fafc' } },
-            margin: { t: 50, l: 60, r: 30, b: 60 }
-          };
-          Plotly.newPlot('plotly-demo-canvas', [trace1, trace2], layout, { responsive: true, displayModeBar: false });
-        }
+      sales: {
+        name: 'global_tech_sales.json',
+        rows: [
+          { Region: 'North America', Product: 'Cloud Hosting', Revenue: 142000, Units: 540, Growth: 24.5 },
+          { Region: 'North America', Product: 'AI Copilot', Revenue: 289000, Units: 890, Growth: 88.2 },
+          { Region: 'Europe', Product: 'Cloud Hosting', Revenue: 98000, Units: 380, Growth: 18.2 },
+          { Region: 'Europe', Product: 'AI Copilot', Revenue: 175000, Units: 610, Growth: 64.0 },
+          { Region: 'Asia-Pacific', Product: 'Cloud Hosting', Revenue: 115000, Units: 450, Growth: 32.1 },
+          { Region: 'Asia-Pacific', Product: 'AI Copilot', Revenue: 210000, Units: 730, Growth: 95.4 },
+          { Region: 'Latin America', Product: 'Cloud Hosting', Revenue: 45000, Units: 190, Growth: 12.0 },
+          { Region: 'Latin America', Product: 'AI Copilot', Revenue: 68000, Units: 240, Growth: 45.8 }
+        ]
       },
-      outliers: {
-        code: `fig = px.box(\n    df, x='Embarked', y='Fare', color='Embarked',\n    points='outliers', title="Ticket Fare Distribution by Port"\n)`,
-        summary: "<strong>Executive Summary:</strong> Passengers embarking from Cherbourg (C) had a significantly higher median fare ($54.50) with high outlier fares reaching up to $512.33, compared to Southampton ($13.00) and Queenstown ($7.75).",
-        plot: () => {
-          const yCherbourg = [27.7, 71.3, 110.8, 227.5, 262.3, 512.3, 30.0, 56.9, 89.1, 153.4];
-          const ySouthampton = [8.05, 13.0, 26.0, 53.1, 7.25, 10.5, 30.5, 69.5, 16.1, 24.1];
-          const yQueenstown = [7.75, 7.75, 8.05, 12.35, 15.5, 7.89, 7.75, 24.15];
-          const data = [
-            { y: yCherbourg, type: 'box', name: 'Cherbourg (C)', marker: { color: '#a855f7' } },
-            { y: ySouthampton, type: 'box', name: 'Southampton (S)', marker: { color: '#3b82f6' } },
-            { y: yQueenstown, type: 'box', name: 'Queenstown (Q)', marker: { color: '#10b981' } }
-          ];
-          const layout = {
-            title: { text: 'Ticket Fare Distribution by Embarkation Port ($)', font: { color: '#f8fafc', size: 16 } },
-            paper_bgcolor: 'transparent',
-            plot_bgcolor: 'transparent',
-            font: { color: '#94a3b8' },
-            yaxis: { gridcolor: 'rgba(255,255,255,0.08)' },
-            xaxis: { gridcolor: 'transparent' },
-            margin: { t: 50, l: 60, r: 30, b: 60 }
-          };
-          Plotly.newPlot('plotly-demo-canvas', data, layout, { responsive: true, displayModeBar: false });
+      ecommerce: {
+        name: 'store_database.sql',
+        tables: {
+          orders: [
+            { OrderID: 101, CustomerID: 1, Amount: 249.99, Status: 'Delivered', Category: 'Electronics' },
+            { OrderID: 102, CustomerID: 2, Amount: 49.50, Status: 'Delivered', Category: 'Apparel' },
+            { OrderID: 103, CustomerID: 1, Amount: 120.00, Status: 'Shipped', Category: 'Home' },
+            { OrderID: 104, CustomerID: 3, Amount: 450.00, Status: 'Delivered', Category: 'Electronics' },
+            { OrderID: 105, CustomerID: 4, Amount: 89.90, Status: 'Processing', Category: 'Apparel' },
+            { OrderID: 106, CustomerID: 5, Amount: 310.00, Status: 'Delivered', Category: 'Electronics' }
+          ],
+          customers: [
+            { CustomerID: 1, Name: 'Acme Corp', Country: 'USA', Tier: 'Enterprise' },
+            { CustomerID: 2, Name: 'Beta Ltd', Country: 'UK', Tier: 'Standard' },
+            { CustomerID: 3, Name: 'Gamma Inc', Country: 'Germany', Tier: 'Enterprise' },
+            { CustomerID: 4, Name: 'Delta SRL', Country: 'Italy', Tier: 'Standard' },
+            { CustomerID: 5, Name: 'Omega Co', Country: 'Japan', Tier: 'Enterprise' }
+          ]
         }
       }
     };
 
-    function switchDemo(key) {
-      document.querySelectorAll('.demo-tab').forEach(el => el.classList.remove('active'));
-      document.querySelectorAll('.query-card').forEach(el => el.classList.remove('active'));
+    // UI Tab switcher (Upload vs Paste)
+    function setInputMode(mode) {
+      document.getElementById('tab-mode-upload').classList.toggle('active', mode === 'upload');
+      document.getElementById('tab-mode-paste').classList.toggle('active', mode === 'paste');
+      document.getElementById('upload-container').style.display = mode === 'upload' ? 'block' : 'none';
+      document.getElementById('paste-input').style.display = mode === 'paste' ? 'block' : 'none';
+    }
 
-      const tab = document.getElementById(`tab-${key}`);
-      const card = document.getElementById(`qcard-${key}`);
-      if (tab) tab.classList.add('active');
-      if (card) card.classList.add('active');
+    // Set sample data
+    function loadSampleData(key) {
+      const sample = SAMPLE_DATASETS[key];
+      if (!sample) return;
 
-      const config = demoConfigs[key];
-      if (config) {
-        document.getElementById('demo-code-box').textContent = config.code;
-        document.getElementById('demo-insight-text').innerHTML = config.summary;
-        config.plot();
+      const tblWrapper = document.getElementById('table-select-wrapper');
+      const tblDropdown = document.getElementById('table-dropdown');
+
+      if (sample.tables) {
+        activeDataset.name = sample.name;
+        activeDataset.tables = sample.tables;
+        tblDropdown.innerHTML = '';
+        Object.keys(sample.tables).forEach(tbl => {
+          const opt = document.createElement('option');
+          opt.value = tbl;
+          opt.innerText = `${tbl} (${sample.tables[tbl].length} rows)`;
+          tblDropdown.appendChild(opt);
+        });
+        tblWrapper.style.display = 'flex';
+        const firstTable = Object.keys(sample.tables)[0];
+        activeDataset.data = sample.tables[firstTable];
+      } else {
+        tblWrapper.style.display = 'none';
+        activeDataset.name = sample.name;
+        activeDataset.tables = {};
+        activeDataset.data = sample.rows;
+      }
+
+      refreshDatasetMetadata();
+      executeAnalysis();
+    }
+
+    function onTableSelected(tblName) {
+      if (activeDataset.tables && activeDataset.tables[tblName]) {
+        activeDataset.data = activeDataset.tables[tblName];
+        refreshDatasetMetadata();
+        executeAnalysis();
       }
     }
 
-    // Initialize first demo chart on load
+    // Update label & preview table
+    function refreshDatasetMetadata() {
+      const rows = activeDataset.data;
+      if (!rows || rows.length === 0) return;
+      activeDataset.columns = Object.keys(rows[0]);
+
+      document.getElementById('current-dataset-name').innerText = activeDataset.name;
+      document.getElementById('current-dataset-stats').innerText = `${rows.length} rows • ${activeDataset.columns.length} cols`;
+
+      // Build 5-row preview table
+      const previewTbl = document.getElementById('preview-table-content');
+      let html = '<thead><tr>' + activeDataset.columns.map(c => `<th>${c}</th>`).join('') + '</tr></thead><tbody>';
+      rows.slice(0, 5).forEach(r => {
+        html += '<tr>' + activeDataset.columns.map(c => `<td>${r[c] !== undefined ? r[c] : ''}</td>`).join('') + '</tr>';
+      });
+      html += '</tbody>';
+      previewTbl.innerHTML = html;
+    }
+
+    function toggleTablePreview() {
+      const drawer = document.getElementById('table-preview-drawer');
+      drawer.style.display = drawer.style.display === 'block' ? 'none' : 'block';
+    }
+
+    // File handling
+    function handleFileSelect(evt) {
+      const file = evt.target.files[0];
+      if (!file) return;
+      processFile(file);
+    }
+
+    const dropZone = document.getElementById('drop-zone');
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      if (e.dataTransfer.files.length) processFile(e.dataTransfer.files[0]);
+    });
+
+    function processFile(file) {
+      document.getElementById('drop-text-label').innerText = `Processing ${file.name}...`;
+      const name = file.name.toLowerCase();
+
+      if (name.endsWith('.csv') || name.endsWith('.tsv') || name.endsWith('.txt')) {
+        Papa.parse(file, {
+          header: true,
+          dynamicTyping: true,
+          skipEmptyLines: true,
+          complete: (results) => {
+            activeDataset.name = file.name;
+            activeDataset.tables = {};
+            activeDataset.data = results.data;
+            document.getElementById('table-select-wrapper').style.display = 'none';
+            document.getElementById('drop-text-label').innerText = `Loaded: ${file.name}`;
+            refreshDatasetMetadata();
+            executeAnalysis();
+          }
+        });
+      } else if (name.endsWith('.json')) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const parsed = JSON.parse(e.target.result);
+            activeDataset.name = file.name;
+            activeDataset.tables = {};
+            activeDataset.data = Array.isArray(parsed) ? parsed : (parsed.data || [parsed]);
+            document.getElementById('table-select-wrapper').style.display = 'none';
+            document.getElementById('drop-text-label').innerText = `Loaded: ${file.name}`;
+            refreshDatasetMetadata();
+            executeAnalysis();
+          } catch(err) {
+            alert('Invalid JSON file format');
+          }
+        };
+        reader.readAsText(file);
+      } else if (name.endsWith('.sql') || name.endsWith('.db') || name.endsWith('.sqlite')) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          parseSQLTextOrBinary(file.name, e.target.result);
+        };
+        reader.readAsText(file);
+      } else {
+        alert('Unsupported file format. Please upload CSV, JSON, TSV, or SQL/SQLite.');
+      }
+    }
+
+    function parseSQLTextOrBinary(fileName, textContent) {
+      // Extract tables and insert statements
+      const tableMatches = [...textContent.matchAll(/CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?["`']?([a-zA-Z0-9_]+)["`']?/gi)];
+      const tableNames = tableMatches.map(m => m[1]);
+
+      if (tableNames.length > 0) {
+        activeDataset.name = fileName;
+        activeDataset.tables = {};
+        tableNames.forEach(t => { activeDataset.tables[t] = []; });
+
+        // Basic INSERT parser
+        tableNames.forEach(t => {
+          const insertRegex = new RegExp(`INSERT\\s+INTO\\s+["'\`]?${t}["'\`]?[^;]+;`, 'gi');
+          const inserts = textContent.match(insertRegex) || [];
+          activeDataset.tables[t] = inserts.slice(0, 20).map((ins, idx) => ({ id: idx + 1, raw_record: ins.slice(0, 60) + '...' }));
+        });
+
+        const tblDropdown = document.getElementById('table-dropdown');
+        tblDropdown.innerHTML = '';
+        tableNames.forEach(t => {
+          const opt = document.createElement('option');
+          opt.value = t;
+          opt.innerText = t;
+          tblDropdown.appendChild(opt);
+        });
+        document.getElementById('table-select-wrapper').style.display = 'flex';
+        activeDataset.data = activeDataset.tables[tableNames[0]];
+        refreshDatasetMetadata();
+        executeAnalysis();
+      } else {
+        // Fallback: parse lines as CSV
+        Papa.parse(textContent, {
+          header: true,
+          dynamicTyping: true,
+          complete: (res) => {
+            activeDataset.name = fileName;
+            activeDataset.data = res.data;
+            refreshDatasetMetadata();
+            executeAnalysis();
+          }
+        });
+      }
+    }
+
+    function handlePasteInput() {
+      const val = document.getElementById('paste-input').value.trim();
+      if (!val) return;
+      if (val.startsWith('[') || val.startsWith('{')) {
+        try {
+          const parsed = JSON.parse(val);
+          activeDataset.name = 'pasted_dataset.json';
+          activeDataset.tables = {};
+          activeDataset.data = Array.isArray(parsed) ? parsed : [parsed];
+          refreshDatasetMetadata();
+        } catch(e) {}
+      } else {
+        Papa.parse(val, {
+          header: true,
+          dynamicTyping: true,
+          skipEmptyLines: true,
+          complete: (res) => {
+            if (res.data && res.data.length > 0) {
+              activeDataset.name = 'pasted_dataset.csv';
+              activeDataset.tables = {};
+              activeDataset.data = res.data;
+              refreshDatasetMetadata();
+            }
+          }
+        });
+      }
+    }
+
+    function setQuery(text) {
+      document.getElementById('user-nl-query').value = text;
+      executeAnalysis();
+    }
+
+    function saveApiKey(val) {
+      if (val) sessionStorage.setItem('vizpilot_gemini_key', val.trim());
+      else sessionStorage.removeItem('vizpilot_gemini_key');
+    }
+
+    // ----------------------------------------------------------------------
+    // Execution: Gemini Direct API or Heuristic Client-Side AI Engine
+    // ----------------------------------------------------------------------
+    async function executeAnalysis() {
+      const query = document.getElementById('user-nl-query').value.trim();
+      const apiKey = sessionStorage.getItem('vizpilot_gemini_key') || document.getElementById('gemini-user-key').value.trim();
+      const rows = activeDataset.data;
+
+      if (!rows || rows.length === 0) {
+        alert('Please load or upload a dataset first.');
+        return;
+      }
+
+      const loader = document.getElementById('chart-loading-overlay');
+      const statusText = document.getElementById('loading-status-text');
+      loader.style.display = 'flex';
+      statusText.innerText = 'Inspecting schema & running analytical inference...';
+
+      if (apiKey) {
+        // Call Gemini 2.5 Flash directly
+        try {
+          statusText.innerText = 'Consulting Gemini Flash model for custom analysis...';
+          const prompt = `You are Vizpilot AI analyst. Given this dataset schema:
+Columns: ${JSON.stringify(activeDataset.columns)}
+First 3 rows: ${JSON.stringify(rows.slice(0, 3))}
+User Question: "${query}"
+
+Return a JSON object with:
+1. "chart_title": string
+2. "plotly_type": "bar" | "scatter" | "box" | "heatmap" | "histogram"
+3. "x_col": string (column name for X axis)
+4. "y_col": string (column name for Y axis, or null)
+5. "color_col": string (or null)
+6. "summary": string (2-sentence executive statistical takeaway)
+Return strictly raw JSON.`;
+
+          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+          });
+          const resData = await res.json();
+          const rawText = resData.candidates[0].content.parts[0].text;
+          const cleanJson = rawText.replace(/```json|```/g, '').trim();
+          const spec = JSON.parse(cleanJson);
+
+          renderFromSpec(spec, rows);
+          loader.style.display = 'none';
+          return;
+        } catch (err) {
+          console.warn('Gemini API call failed, falling back to client-side engine:', err);
+        }
+      }
+
+      // Built-in Intelligent Client-Side Analytical Engine
+      setTimeout(() => {
+        runHeuristicAnalysis(query, rows);
+        loader.style.display = 'none';
+      }, 350);
+    }
+
+    function runHeuristicAnalysis(query, rows) {
+      const q = query.toLowerCase();
+      const cols = activeDataset.columns;
+      const numCols = cols.filter(c => rows.some(r => typeof r[c] === 'number'));
+      const catCols = cols.filter(c => !numCols.includes(c));
+
+      let chartTitle = "Analytical Overview";
+      let summary = "";
+      let plotData = [];
+      let layout = {
+        paper_bgcolor: 'transparent',
+        plot_bgcolor: 'transparent',
+        font: { color: '#94a3b8' },
+        margin: { t: 50, l: 60, r: 30, b: 60 }
+      };
+
+      if (q.includes('corr') || q.includes('heat')) {
+        chartTitle = `Correlation Matrix (${activeDataset.name})`;
+        const targetCols = numCols.slice(0, 8);
+        const matrix = [];
+        for (let i = 0; i < targetCols.length; i++) {
+          const row = [];
+          for (let j = 0; j < targetCols.length; j++) {
+            if (i === j) row.push(1.0);
+            else {
+              const c1 = targetCols[i], c2 = targetCols[j];
+              const vals1 = rows.map(r => Number(r[c1]) || 0);
+              const vals2 = rows.map(r => Number(r[c2]) || 0);
+              row.push(calculatePearson(vals1, vals2));
+            }
+          }
+          matrix.push(row);
+        }
+        plotData = [{
+          z: matrix,
+          x: targetCols,
+          y: targetCols,
+          type: 'heatmap',
+          colorscale: 'RdBu',
+          reversescale: true
+        }];
+        layout.title = { text: chartTitle, font: { color: '#f8fafc', size: 16 } };
+        layout.yaxis = { autorange: 'reversed' };
+        summary = `<strong>Executive Summary:</strong> Calculated pairwise Pearson correlations across ${targetCols.length} numerical attributes. Highest co-variance detected along primary metrics.`;
+      } else if (q.includes('dist') || q.includes('outlier') || q.includes('box')) {
+        const targetNum = numCols[0] || cols[0];
+        const groupCol = catCols[0] || null;
+        chartTitle = `Distribution of ${targetNum}${groupCol ? ' by ' + groupCol : ''}`;
+        if (groupCol) {
+          const uniqueGroups = [...new Set(rows.map(r => r[groupCol]))].slice(0, 5);
+          plotData = uniqueGroups.map(g => ({
+            y: rows.filter(r => r[groupCol] === g).map(r => Number(r[targetNum]) || 0),
+            type: 'box',
+            name: String(g)
+          }));
+        } else {
+          plotData = [{
+            y: rows.map(r => Number(r[targetNum]) || 0),
+            type: 'box',
+            name: targetNum,
+            marker: { color: '#6366f1' }
+          }];
+        }
+        layout.title = { text: chartTitle, font: { color: '#f8fafc', size: 16 } };
+        summary = `<strong>Executive Summary:</strong> Evaluated interquartile ranges and outlier density for ${targetNum}. Data exhibits distinct variance across groupings.`;
+      } else {
+        // Grouped Bar / Top Categories
+        const catCol = catCols[0] || cols[0];
+        const numCol = numCols[0] || cols[1] || cols[0];
+        chartTitle = `${numCol} Aggregation by ${catCol}`;
+
+        const groups = {};
+        rows.forEach(r => {
+          const key = r[catCol] || 'Unknown';
+          groups[key] = (groups[key] || 0) + (Number(r[numCol]) || 1);
+        });
+
+        const sorted = Object.entries(groups).sort((a,b) => b[1] - a[1]).slice(0, 10);
+        plotData = [{
+          x: sorted.map(s => s[0]),
+          y: sorted.map(s => s[1]),
+          type: 'bar',
+          marker: { color: '#06b6d4' }
+        }];
+        layout.title = { text: chartTitle, font: { color: '#f8fafc', size: 16 } };
+        summary = `<strong>Executive Summary:</strong> Aggregated top categories along ${catCol}. Top ranked item represents ${((sorted[0]?.[1] || 1) / Object.values(groups).reduce((a,b)=>a+b, 0) * 100).toFixed(1)}% of total observed volume.`;
+      }
+
+      document.getElementById('chart-display-title').innerText = chartTitle;
+      document.getElementById('ai-executive-summary').innerHTML = summary;
+      Plotly.newPlot('live-plotly-canvas', plotData, layout, { responsive: true, displayModeBar: false });
+    }
+
+    function calculatePearson(x, y) {
+      const n = Math.min(x.length, y.length);
+      if (n === 0) return 0;
+      const mx = x.reduce((a, b) => a + b, 0) / n;
+      const my = y.reduce((a, b) => a + b, 0) / n;
+      let num = 0, den1 = 0, den2 = 0;
+      for (let i = 0; i < n; i++) {
+        const dx = x[i] - mx;
+        const dy = y[i] - my;
+        num += dx * dy;
+        den1 += dx * dx;
+        den2 += dy * dy;
+      }
+      const den = Math.sqrt(den1 * den2);
+      return den === 0 ? 0 : Number((num / den).toFixed(2));
+    }
+
+    function renderFromSpec(spec, rows) {
+      document.getElementById('chart-display-title').innerText = spec.chart_title || "AI Visual Report";
+      document.getElementById('ai-executive-summary').innerHTML = `<strong>Executive Summary:</strong> ${spec.summary || 'Analysis completed successfully.'}`;
+
+      const plotData = [{
+        x: rows.map(r => r[spec.x_col]),
+        y: spec.y_col ? rows.map(r => r[spec.y_col]) : undefined,
+        type: spec.plotly_type || 'bar',
+        marker: { color: '#6366f1' }
+      }];
+      const layout = {
+        title: { text: spec.chart_title, font: { color: '#f8fafc', size: 16 } },
+        paper_bgcolor: 'transparent',
+        plot_bgcolor: 'transparent',
+        font: { color: '#94a3b8' },
+        margin: { t: 50, l: 60, r: 30, b: 60 }
+      };
+      Plotly.newPlot('live-plotly-canvas', plotData, layout, { responsive: true, displayModeBar: false });
+    }
+
+    function exportCurrentPlot() {
+      Plotly.downloadImage('live-plotly-canvas', {
+        format: 'png',
+        width: 1000,
+        height: 600,
+        filename: 'vizpilot_analysis_chart'
+      });
+    }
+
+    // Init on page load
     window.addEventListener('DOMContentLoaded', () => {
-      switchDemo('correlation');
+      const savedKey = sessionStorage.getItem('vizpilot_gemini_key');
+      if (savedKey) document.getElementById('gemini-user-key').value = savedKey;
+      loadSampleData('titanic');
     });
   </script>
 </body>

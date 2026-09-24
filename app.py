@@ -43,31 +43,62 @@ if "dataset_path" not in st.session_state:
     st.session_state.dataset_path = None
 if "dataset_name" not in st.session_state:
     st.session_state.dataset_name = None
+if "selected_table" not in st.session_state:
+    st.session_state.selected_table = None
 if "chat_history" not in st.session_state:
     # list of dicts: {role, content, artifact_path?, summary?}
     st.session_state.chat_history = []
 
 # --------------------------------------------------------------------------
-# Sidebar: dataset upload
+# Sidebar: dataset / database source
 # --------------------------------------------------------------------------
 with st.sidebar:
-    st.title("📁 Dataset")
-    uploaded_file = st.file_uploader(
-        "Drop a CSV, JSON, Excel, or SQLite file",
-        type=["csv", "json", "xlsx", "xls", "db", "sqlite", "sqlite3"],
+    st.title("📁 Data & Database")
+    source_type = st.radio(
+        "Source Type",
+        ["Upload File", "Database Connection"],
+        horizontal=True,
     )
 
-    if uploaded_file is not None:
-        suffix = Path(uploaded_file.name).suffix
-        save_path = UPLOAD_DIR / f"{uuid.uuid4().hex[:8]}_{uploaded_file.name}"
-        with open(save_path, "wb") as f:
-            f.write(uploaded_file.getbuffer())
-        st.session_state.dataset_path = str(save_path)
-        st.session_state.dataset_name = uploaded_file.name
-        st.success(f"Loaded `{uploaded_file.name}`")
+    if source_type == "Upload File":
+        uploaded_file = st.file_uploader(
+            "Drop a CSV, JSON, Excel, or SQLite file",
+            type=["csv", "json", "xlsx", "xls", "db", "sqlite", "sqlite3"],
+        )
+        if uploaded_file is not None:
+            save_path = UPLOAD_DIR / f"{uuid.uuid4().hex[:8]}_{uploaded_file.name}"
+            with open(save_path, "wb") as f:
+                f.write(uploaded_file.getbuffer())
+            st.session_state.dataset_path = str(save_path)
+            st.session_state.dataset_name = uploaded_file.name
+            st.success(f"Loaded `{uploaded_file.name}`")
+    else:
+        db_uri = st.text_input(
+            "Database URI or SQLite path",
+            placeholder="sqlite:///database.db or postgresql://...",
+            help="Supported: SQLite (.db/.sqlite), PostgreSQL, MySQL",
+        )
+        if db_uri:
+            st.session_state.dataset_path = db_uri.strip()
+            st.session_state.dataset_name = db_uri.split("/")[-1] or "Connected Database"
+            st.success(f"Connected to `{st.session_state.dataset_name}`")
+
+    # If database tables are detected, offer table selection
+    if st.session_state.dataset_path:
+        tables = agent.get_database_tables(st.session_state.dataset_path)
+        if tables:
+            st.session_state.selected_table = st.selectbox(
+                "🗄️ Select Active Table",
+                options=tables,
+                index=0 if st.session_state.selected_table not in tables else tables.index(st.session_state.selected_table),
+            )
+            st.caption(f"Analyzing table **`{st.session_state.selected_table}`** ({len(tables)} tables in DB)")
+        else:
+            st.session_state.selected_table = None
 
     if st.session_state.dataset_name:
-        st.caption(f"Active dataset: **{st.session_state.dataset_name}**")
+        st.divider()
+        st.caption(f"Active source: **{st.session_state.dataset_name}**")
 
     if st.button("Clear conversation"):
         st.session_state.chat_history = []
@@ -75,7 +106,7 @@ with st.sidebar:
 
     st.divider()
     st.caption(
-        "Model: `{}`  \nMax self-correction retries: **{}**".format(
+        "Model: `{}`  \nMax retries: **{}**".format(
             agent.LLM_MODEL, agent.MAX_RETRIES
         )
     )
@@ -122,7 +153,9 @@ if query:
         final_state = {}
         try:
             for node_name, node_state in agent.stream_pipeline(
-                st.session_state.dataset_path, query
+                st.session_state.dataset_path,
+                query,
+                selected_table=st.session_state.selected_table,
             ):
                 label = STATUS_LABELS.get(node_name, node_name)
                 status_box.update(label=label, state="running")
