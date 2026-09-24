@@ -557,19 +557,22 @@
       padding: 1.5rem;
       display: flex;
       flex-direction: column;
-      background: rgba(15, 23, 42, 0.4);
-      min-height: 550px;
+      background: rgba(15, 23, 42, 0.45);
+      position: relative;
+      overflow: hidden;
+      min-height: 580px;
     }
     .output-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 1rem;
+      margin-bottom: 0.85rem;
       padding-bottom: 0.75rem;
       border-bottom: 1px solid var(--border-color);
+      flex-shrink: 0;
     }
     .output-title {
-      font-size: 1.1rem;
+      font-size: 1.05rem;
       font-weight: 700;
       color: #fff;
       display: flex;
@@ -577,15 +580,25 @@
       gap: 0.5rem;
     }
     .chart-container {
-      flex: 1;
       width: 100%;
+      height: 420px;
       min-height: 420px;
+      max-height: 420px;
       position: relative;
+      background: rgba(10, 15, 26, 0.5);
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    #live-plotly-canvas {
+      width: 100% !important;
+      height: 100% !important;
     }
     .chart-loader {
       position: absolute;
       inset: 0;
-      background: rgba(15, 23, 42, 0.85);
+      background: rgba(15, 23, 42, 0.9);
       display: none;
       flex-direction: column;
       align-items: center;
@@ -607,14 +620,19 @@
     }
 
     .executive-summary-card {
-      margin-top: 1.25rem;
-      background: rgba(255, 255, 255, 0.03);
+      margin-top: 1rem;
+      background: rgba(17, 24, 39, 0.9);
+      border: 1px solid var(--border-color);
       border-left: 4px solid var(--accent);
       padding: 1rem 1.25rem;
       border-radius: 0 10px 10px 0;
-      font-size: 0.9rem;
+      font-size: 0.88rem;
       color: #e2e8f0;
       line-height: 1.6;
+      flex-shrink: 0;
+      position: relative;
+      z-index: 2;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.35);
     }
 
     /* Data Preview Drawer */
@@ -1068,53 +1086,125 @@
       tables: {}
     };
 
-    // Preloaded Datasets
+    // Preloaded Datasets with Authentic Nulls and Distributions
     const SAMPLE_DATASETS = {
       titanic: {
         name: 'titanic_passengers.csv',
+        defaultQuery: 'draw a barchart of missing values',
+        chips: [
+          'draw a barchart of missing values',
+          'Compare survival rate by passenger class and gender',
+          'Feature correlation matrix',
+          'Age vs Fare scatter plot',
+          'Passenger count by embarkation port'
+        ],
         rows: [
-          { PassengerId: 1, Survived: 0, Pclass: 3, Sex: 'male', Age: 22, SibSp: 1, Parch: 0, Fare: 7.25, Embarked: 'S' },
-          { PassengerId: 2, Survived: 1, Pclass: 1, Sex: 'female', Age: 38, SibSp: 1, Parch: 0, Fare: 71.28, Embarked: 'C' },
-          { PassengerId: 3, Survived: 1, Pclass: 3, Sex: 'female', Age: 26, SibSp: 0, Parch: 0, Fare: 7.925, Embarked: 'S' },
-          { PassengerId: 4, Survived: 1, Pclass: 1, Sex: 'female', Age: 35, SibSp: 1, Parch: 0, Fare: 53.10, Embarked: 'S' },
-          { PassengerId: 5, Survived: 0, Pclass: 3, Sex: 'male', Age: 35, SibSp: 0, Parch: 0, Fare: 8.05, Embarked: 'S' },
-          { PassengerId: 6, Survived: 0, Pclass: 3, Sex: 'male', Age: 28, SibSp: 0, Parch: 0, Fare: 8.46, Embarked: 'Q' },
-          { PassengerId: 7, Survived: 0, Pclass: 1, Sex: 'male', Age: 54, SibSp: 0, Parch: 0, Fare: 51.86, Embarked: 'S' },
-          { PassengerId: 8, Survived: 0, Pclass: 3, Sex: 'male', Age: 2, SibSp: 3, Parch: 1, Fare: 21.07, Embarked: 'S' },
-          { PassengerId: 9, Survived: 1, Pclass: 3, Sex: 'female', Age: 27, SibSp: 0, Parch: 2, Fare: 11.13, Embarked: 'S' },
-          { PassengerId: 10, Survived: 1, Pclass: 2, Sex: 'female', Age: 14, SibSp: 1, Parch: 0, Fare: 30.07, Embarked: 'C' }
+          { PassengerId: 1, Survived: 0, Pclass: 3, Name: "Braund, Mr. Owen Harris", Sex: "male", Age: 22, SibSp: 1, Parch: 0, Fare: 7.25, Cabin: null, Embarked: "S" },
+          { PassengerId: 2, Survived: 1, Pclass: 1, Name: "Cumings, Mrs. John Bradley", Sex: "female", Age: 38, SibSp: 1, Parch: 0, Fare: 71.28, Cabin: "C85", Embarked: "C" },
+          { PassengerId: 3, Survived: 1, Pclass: 3, Name: "Heikkinen, Miss. Laina", Sex: "female", Age: 26, SibSp: 0, Parch: 0, Fare: 7.92, Cabin: null, Embarked: "S" },
+          { PassengerId: 4, Survived: 1, Pclass: 1, Name: "Futrelle, Mrs. Jacques Heath", Sex: "female", Age: 35, SibSp: 1, Parch: 0, Fare: 53.10, Cabin: "C123", Embarked: "S" },
+          { PassengerId: 5, Survived: 0, Pclass: 3, Name: "Allen, Mr. William Henry", Sex: "male", Age: 35, SibSp: 0, Parch: 0, Fare: 8.05, Cabin: null, Embarked: "S" },
+          { PassengerId: 6, Survived: 0, Pclass: 3, Name: "Moran, Mr. James", Sex: "male", Age: null, SibSp: 0, Parch: 0, Fare: 8.46, Cabin: null, Embarked: "Q" },
+          { PassengerId: 7, Survived: 0, Pclass: 1, Name: "McCarthy, Mr. Timothy J", Sex: "male", Age: 54, SibSp: 0, Parch: 0, Fare: 51.86, Cabin: "E46", Embarked: "S" },
+          { PassengerId: 8, Survived: 0, Pclass: 3, Name: "Palsson, Master. Gosta Leonard", Sex: "male", Age: 2, SibSp: 3, Parch: 1, Fare: 21.07, Cabin: null, Embarked: "S" },
+          { PassengerId: 9, Survived: 1, Pclass: 3, Name: "Johnson, Mrs. Oscar W", Sex: "female", Age: 27, SibSp: 0, Parch: 2, Fare: 11.13, Cabin: null, Embarked: "S" },
+          { PassengerId: 10, Survived: 1, Pclass: 2, Name: "Nasser, Mrs. Nicholas", Sex: "female", Age: 14, SibSp: 1, Parch: 0, Fare: 30.07, Cabin: null, Embarked: "C" },
+          { PassengerId: 11, Survived: 1, Pclass: 3, Name: "Sandstrom, Miss. Marguerite Rut", Sex: "female", Age: 4, SibSp: 1, Parch: 1, Fare: 16.70, Cabin: "G6", Embarked: "S" },
+          { PassengerId: 12, Survived: 1, Pclass: 1, Name: "Bonnell, Miss. Elizabeth", Sex: "female", Age: 58, SibSp: 0, Parch: 0, Fare: 26.55, Cabin: "C103", Embarked: "S" },
+          { PassengerId: 13, Survived: 0, Pclass: 3, Name: "Saundercock, Mr. William Henry", Sex: "male", Age: 20, SibSp: 0, Parch: 0, Fare: 8.05, Cabin: null, Embarked: "S" },
+          { PassengerId: 14, Survived: 0, Pclass: 3, Name: "Andersson, Mr. Anders Johan", Sex: "male", Age: 39, SibSp: 1, Parch: 5, Fare: 31.28, Cabin: null, Embarked: "S" },
+          { PassengerId: 15, Survived: 0, Pclass: 3, Name: "Vestrom, Miss. Hulda Amanda", Sex: "female", Age: 14, SibSp: 0, Parch: 0, Fare: 7.85, Cabin: null, Embarked: "S" },
+          { PassengerId: 16, Survived: 1, Pclass: 2, Name: "Hewlett, Mrs. (Mary D Kingcome)", Sex: "female", Age: 55, SibSp: 0, Parch: 0, Fare: 16.00, Cabin: null, Embarked: "S" },
+          { PassengerId: 17, Survived: 0, Pclass: 3, Name: "Rice, Master. Eugene", Sex: "male", Age: 2, SibSp: 4, Parch: 1, Fare: 29.12, Cabin: null, Embarked: "Q" },
+          { PassengerId: 18, Survived: 1, Pclass: 2, Name: "Williams, Mr. Charles Eugene", Sex: "male", Age: null, SibSp: 0, Parch: 0, Fare: 13.00, Cabin: null, Embarked: "S" },
+          { PassengerId: 19, Survived: 0, Pclass: 3, Name: "Vander Planke, Mrs. Julius", Sex: "female", Age: 31, SibSp: 1, Parch: 0, Fare: 18.00, Cabin: null, Embarked: "S" },
+          { PassengerId: 20, Survived: 1, Pclass: 3, Name: "Masselmani, Mrs. Fatima", Sex: "female", Age: null, SibSp: 0, Parch: 0, Fare: 7.22, Cabin: null, Embarked: "C" },
+          { PassengerId: 21, Survived: 0, Pclass: 2, Name: "Fynney, Mr. Joseph J", Sex: "male", Age: 35, SibSp: 0, Parch: 0, Fare: 26.00, Cabin: null, Embarked: "S" },
+          { PassengerId: 22, Survived: 1, Pclass: 2, Name: "Beesley, Mr. Lawrence", Sex: "male", Age: 34, SibSp: 0, Parch: 0, Fare: 13.00, Cabin: "D56", Embarked: "S" },
+          { PassengerId: 23, Survived: 1, Pclass: 3, Name: "McGowan, Miss. Anna", Sex: "female", Age: 15, SibSp: 0, Parch: 0, Fare: 8.03, Cabin: null, Embarked: "Q" },
+          { PassengerId: 24, Survived: 1, Pclass: 1, Name: "Sloper, Mr. William Thompson", Sex: "male", Age: 28, SibSp: 0, Parch: 0, Fare: 35.50, Cabin: "A6", Embarked: "S" },
+          { PassengerId: 25, Survived: 0, Pclass: 3, Name: "Palsson, Miss. Torborg Danira", Sex: "female", Age: 8, SibSp: 3, Parch: 1, Fare: 21.07, Cabin: null, Embarked: "S" },
+          { PassengerId: 26, Survived: 1, Pclass: 3, Name: "Asplund, Mrs. Carl Oscar", Sex: "female", Age: 38, SibSp: 1, Parch: 5, Fare: 31.39, Cabin: null, Embarked: "S" },
+          { PassengerId: 27, Survived: 0, Pclass: 3, Name: "Emir, Mr. Farred Chehab", Sex: "male", Age: null, SibSp: 0, Parch: 0, Fare: 7.22, Cabin: null, Embarked: "C" },
+          { PassengerId: 28, Survived: 0, Pclass: 1, Name: "Fortune, Mr. Charles Alexander", Sex: "male", Age: 19, SibSp: 3, Parch: 2, Fare: 263.00, Cabin: "C23", Embarked: "S" },
+          { PassengerId: 29, Survived: 1, Pclass: 3, Name: "O'Dwyer, Miss. Ellen", Sex: "female", Age: null, SibSp: 0, Parch: 0, Fare: 7.88, Cabin: null, Embarked: "Q" },
+          { PassengerId: 30, Survived: 0, Pclass: 3, Name: "Todoroff, Mr. Lalio", Sex: "male", Age: null, SibSp: 0, Parch: 0, Fare: 7.90, Cabin: null, Embarked: "S" },
+          { PassengerId: 31, Survived: 0, Pclass: 1, Name: "Uruchurtu, Don. Manuel E", Sex: "male", Age: 40, SibSp: 0, Parch: 0, Fare: 27.72, Cabin: null, Embarked: "C" },
+          { PassengerId: 32, Survived: 1, Pclass: 1, Name: "Spencer, Mrs. William Augustus", Sex: "female", Age: null, SibSp: 1, Parch: 0, Fare: 146.52, Cabin: "B78", Embarked: "C" },
+          { PassengerId: 33, Survived: 1, Pclass: 3, Name: "Glynn, Miss. Mary Agatha", Sex: "female", Age: null, SibSp: 0, Parch: 0, Fare: 7.75, Cabin: null, Embarked: "Q" },
+          { PassengerId: 34, Survived: 0, Pclass: 2, Name: "Wheadon, Mr. Edward H", Sex: "male", Age: 66, SibSp: 0, Parch: 0, Fare: 10.50, Cabin: null, Embarked: "S" },
+          { PassengerId: 35, Survived: 0, Pclass: 1, Name: "Meyer, Mr. Edgar Joseph", Sex: "male", Age: 28, SibSp: 1, Parch: 0, Fare: 82.17, Cabin: null, Embarked: "C" },
+          { PassengerId: 36, Survived: 0, Pclass: 1, Name: "Holverson, Mr. Alexander", Sex: "male", Age: 42, SibSp: 1, Parch: 0, Fare: 52.00, Cabin: null, Embarked: "S" },
+          { PassengerId: 37, Survived: 1, Pclass: 3, Name: "Mamee, Mr. Hanna", Sex: "male", Age: null, SibSp: 0, Parch: 0, Fare: 7.23, Cabin: null, Embarked: "C" },
+          { PassengerId: 38, Survived: 0, Pclass: 3, Name: "Cann, Mr. Ernest Charles", Sex: "male", Age: 21, SibSp: 0, Parch: 0, Fare: 8.05, Cabin: null, Embarked: "S" },
+          { PassengerId: 39, Survived: 0, Pclass: 3, Name: "Vander Planke, Miss. Augusta", Sex: "female", Age: 18, SibSp: 2, Parch: 0, Fare: 18.00, Cabin: null, Embarked: "S" },
+          { PassengerId: 40, Survived: 1, Pclass: 3, Name: "Nicola-Yarred, Miss. Jamila", Sex: "female", Age: 14, SibSp: 1, Parch: 1, Fare: 11.24, Cabin: null, Embarked: "C" },
+          { PassengerId: 41, Survived: 0, Pclass: 3, Name: "Ahlin, Mrs. Johan", Sex: "female", Age: 40, SibSp: 1, Parch: 0, Fare: 9.48, Cabin: null, Embarked: "S" },
+          { PassengerId: 42, Survived: 0, Pclass: 2, Name: "Turpin, Mrs. William John", Sex: "female", Age: 27, SibSp: 1, Parch: 0, Fare: 21.00, Cabin: null, Embarked: "S" },
+          { PassengerId: 43, Survived: 0, Pclass: 3, Name: "Kraeff, Mr. Theodor", Sex: "male", Age: null, SibSp: 0, Parch: 0, Fare: 7.90, Cabin: null, Embarked: "C" },
+          { PassengerId: 44, Survived: 1, Pclass: 2, Name: "Laroche, Miss. Simonne", Sex: "female", Age: 3, SibSp: 1, Parch: 2, Fare: 41.58, Cabin: null, Embarked: "C" },
+          { PassengerId: 45, Survived: 1, Pclass: 3, Name: "Devaney, Miss. Margaret", Sex: "female", Age: 19, SibSp: 0, Parch: 0, Fare: 7.88, Cabin: null, Embarked: "Q" },
+          { PassengerId: 46, Survived: 0, Pclass: 3, Name: "Rogers, Mr. William John", Sex: "male", Age: null, SibSp: 0, Parch: 0, Fare: 8.05, Cabin: null, Embarked: "S" },
+          { PassengerId: 47, Survived: 0, Pclass: 3, Name: "Lennon, Mr. Denis", Sex: "male", Age: null, SibSp: 1, Parch: 0, Fare: 15.50, Cabin: null, Embarked: "Q" },
+          { PassengerId: 48, Survived: 1, Pclass: 3, Name: "O'Driscoll, Miss. Bridget", Sex: "female", Age: null, SibSp: 0, Parch: 0, Fare: 7.75, Cabin: null, Embarked: "Q" },
+          { PassengerId: 49, Survived: 0, Pclass: 3, Name: "Samaan, Mr. Youssef", Sex: "male", Age: null, SibSp: 2, Parch: 0, Fare: 21.68, Cabin: null, Embarked: "C" },
+          { PassengerId: 50, Survived: 0, Pclass: 3, Name: "Arnold-Franchi, Mrs. Josef", Sex: "female", Age: 18, SibSp: 1, Parch: 0, Fare: 17.80, Cabin: null, Embarked: "S" }
         ]
       },
       sales: {
         name: 'global_tech_sales.json',
+        defaultQuery: 'Top products by revenue',
+        chips: [
+          'Top products by revenue',
+          'Revenue breakdown by region',
+          'Units vs Growth scatter plot',
+          'draw a barchart of missing values',
+          'Average revenue per product category'
+        ],
         rows: [
-          { Region: 'North America', Product: 'Cloud Hosting', Revenue: 142000, Units: 540, Growth: 24.5 },
-          { Region: 'North America', Product: 'AI Copilot', Revenue: 289000, Units: 890, Growth: 88.2 },
-          { Region: 'Europe', Product: 'Cloud Hosting', Revenue: 98000, Units: 380, Growth: 18.2 },
-          { Region: 'Europe', Product: 'AI Copilot', Revenue: 175000, Units: 610, Growth: 64.0 },
-          { Region: 'Asia-Pacific', Product: 'Cloud Hosting', Revenue: 115000, Units: 450, Growth: 32.1 },
-          { Region: 'Asia-Pacific', Product: 'AI Copilot', Revenue: 210000, Units: 730, Growth: 95.4 },
-          { Region: 'Latin America', Product: 'Cloud Hosting', Revenue: 45000, Units: 190, Growth: 12.0 },
-          { Region: 'Latin America', Product: 'AI Copilot', Revenue: 68000, Units: 240, Growth: 45.8 }
+          { Region: 'North America', Product: 'Cloud Hosting', Revenue: 142000, Units: 540, Growth: 24.5, LeadSource: 'Direct' },
+          { Region: 'North America', Product: 'AI Copilot', Revenue: 289000, Units: 890, Growth: 88.2, LeadSource: 'Partner' },
+          { Region: 'Europe', Product: 'Cloud Hosting', Revenue: 98000, Units: 380, Growth: 18.2, LeadSource: 'Direct' },
+          { Region: 'Europe', Product: 'AI Copilot', Revenue: 175000, Units: 610, Growth: 64.0, LeadSource: 'Referral' },
+          { Region: 'Asia-Pacific', Product: 'Cloud Hosting', Revenue: 115000, Units: 450, Growth: 32.1, LeadSource: 'Inbound' },
+          { Region: 'Asia-Pacific', Product: 'AI Copilot', Revenue: 210000, Units: 730, Growth: 95.4, LeadSource: 'Partner' },
+          { Region: 'Latin America', Product: 'Cloud Hosting', Revenue: 45000, Units: 190, Growth: 12.0, LeadSource: null },
+          { Region: 'Latin America', Product: 'AI Copilot', Revenue: 68000, Units: 240, Growth: 45.8, LeadSource: 'Referral' },
+          { Region: 'Middle East', Product: 'Cloud Hosting', Revenue: 82000, Units: 310, Growth: 21.0, LeadSource: 'Inbound' },
+          { Region: 'Middle East', Product: 'AI Copilot', Revenue: 135000, Units: 490, Growth: 72.3, LeadSource: null }
         ]
       },
       ecommerce: {
         name: 'store_database.sql',
+        defaultQuery: 'Total order amount by category',
+        chips: [
+          'Total order amount by category',
+          'Order count by status',
+          'Distribution of order amounts',
+          'draw a barchart of missing values',
+          'Average order amount by category'
+        ],
         tables: {
           orders: [
-            { OrderID: 101, CustomerID: 1, Amount: 249.99, Status: 'Delivered', Category: 'Electronics' },
-            { OrderID: 102, CustomerID: 2, Amount: 49.50, Status: 'Delivered', Category: 'Apparel' },
-            { OrderID: 103, CustomerID: 1, Amount: 120.00, Status: 'Shipped', Category: 'Home' },
-            { OrderID: 104, CustomerID: 3, Amount: 450.00, Status: 'Delivered', Category: 'Electronics' },
-            { OrderID: 105, CustomerID: 4, Amount: 89.90, Status: 'Processing', Category: 'Apparel' },
-            { OrderID: 106, CustomerID: 5, Amount: 310.00, Status: 'Delivered', Category: 'Electronics' }
+            { OrderID: 101, CustomerID: 1, Amount: 249.99, Status: 'Delivered', Category: 'Electronics', Discount: 0.1 },
+            { OrderID: 102, CustomerID: 2, Amount: 49.50, Status: 'Delivered', Category: 'Apparel', Discount: null },
+            { OrderID: 103, CustomerID: 1, Amount: 120.00, Status: 'Shipped', Category: 'Home', Discount: 0.05 },
+            { OrderID: 104, CustomerID: 3, Amount: 450.00, Status: 'Delivered', Category: 'Electronics', Discount: 0.15 },
+            { OrderID: 105, CustomerID: 4, Amount: 89.90, Status: 'Processing', Category: 'Apparel', Discount: null },
+            { OrderID: 106, CustomerID: 5, Amount: 310.00, Status: 'Delivered', Category: 'Electronics', Discount: 0.05 },
+            { OrderID: 107, CustomerID: 2, Amount: 175.50, Status: 'Shipped', Category: 'Home', Discount: null },
+            { OrderID: 108, CustomerID: 3, Amount: 620.00, Status: 'Delivered', Category: 'Electronics', Discount: 0.2 },
+            { OrderID: 109, CustomerID: 6, Amount: 35.00, Status: 'Cancelled', Category: 'Apparel', Discount: null },
+            { OrderID: 110, CustomerID: 7, Amount: 199.00, Status: 'Processing', Category: 'Home', Discount: 0.1 }
           ],
           customers: [
-            { CustomerID: 1, Name: 'Acme Corp', Country: 'USA', Tier: 'Enterprise' },
-            { CustomerID: 2, Name: 'Beta Ltd', Country: 'UK', Tier: 'Standard' },
-            { CustomerID: 3, Name: 'Gamma Inc', Country: 'Germany', Tier: 'Enterprise' },
-            { CustomerID: 4, Name: 'Delta SRL', Country: 'Italy', Tier: 'Standard' },
-            { CustomerID: 5, Name: 'Omega Co', Country: 'Japan', Tier: 'Enterprise' }
+            { CustomerID: 1, Name: 'Acme Corp', Country: 'USA', Tier: 'Enterprise', CreditLimit: 50000 },
+            { CustomerID: 2, Name: 'Beta Ltd', Country: 'UK', Tier: 'Standard', CreditLimit: 10000 },
+            { CustomerID: 3, Name: 'Gamma Inc', Country: 'Germany', Tier: 'Enterprise', CreditLimit: 75000 },
+            { CustomerID: 4, Name: 'Delta SRL', Country: 'Italy', Tier: 'Standard', CreditLimit: 8000 },
+            { CustomerID: 5, Name: 'Omega Co', Country: 'Japan', Tier: 'Enterprise', CreditLimit: 120000 },
+            { CustomerID: 6, Name: 'Sigma SA', Country: 'France', Tier: 'Standard', CreditLimit: 15000 },
+            { CustomerID: 7, Name: 'Theta AS', Country: 'Norway', Tier: 'Enterprise', CreditLimit: 60000 }
           ]
         }
       }
@@ -1156,8 +1246,22 @@
         activeDataset.data = sample.rows;
       }
 
+      if (sample.defaultQuery) {
+        document.getElementById('user-nl-query').value = sample.defaultQuery;
+      }
+
+      if (sample.chips) {
+        renderChips(sample.chips);
+      }
+
       refreshDatasetMetadata();
       executeAnalysis();
+    }
+
+    function renderChips(chipsList) {
+      const container = document.getElementById('query-chips-list');
+      if (!container || !chipsList) return;
+      container.innerHTML = chipsList.map(c => `<span class="chip" onclick="setQuery(this.innerText)">${c}</span>`).join('');
     }
 
     function onTableSelected(tblName) {
@@ -1181,7 +1285,7 @@
       const previewTbl = document.getElementById('preview-table-content');
       let html = '<thead><tr>' + activeDataset.columns.map(c => `<th>${c}</th>`).join('') + '</tr></thead><tbody>';
       rows.slice(0, 5).forEach(r => {
-        html += '<tr>' + activeDataset.columns.map(c => `<td>${r[c] !== undefined ? r[c] : ''}</td>`).join('') + '</tr>';
+        html += '<tr>' + activeDataset.columns.map(c => `<td>${r[c] !== undefined && r[c] !== null ? r[c] : '<em style="color:#f87171">null</em>'}</td>`).join('') + '</tr>';
       });
       html += '</tbody>';
       previewTbl.innerHTML = html;
@@ -1223,6 +1327,7 @@
             activeDataset.data = results.data;
             document.getElementById('table-select-wrapper').style.display = 'none';
             document.getElementById('drop-text-label').innerText = `Loaded: ${file.name}`;
+            updateDynamicChipsForColumns(activeDataset.data);
             refreshDatasetMetadata();
             executeAnalysis();
           }
@@ -1237,6 +1342,7 @@
             activeDataset.data = Array.isArray(parsed) ? parsed : (parsed.data || [parsed]);
             document.getElementById('table-select-wrapper').style.display = 'none';
             document.getElementById('drop-text-label').innerText = `Loaded: ${file.name}`;
+            updateDynamicChipsForColumns(activeDataset.data);
             refreshDatasetMetadata();
             executeAnalysis();
           } catch(err) {
@@ -1255,8 +1361,24 @@
       }
     }
 
+    function updateDynamicChipsForColumns(rows) {
+      if (!rows || !rows[0]) return;
+      const cols = Object.keys(rows[0]);
+      const numCols = cols.filter(c => rows.some(r => typeof r[c] === 'number'));
+      const catCols = cols.filter(c => !numCols.includes(c));
+
+      const generatedChips = [
+        'draw a barchart of missing values',
+        numCols.length >= 2 ? `Correlation matrix across numeric features` : null,
+        numCols[0] ? `Distribution of ${numCols[0]}` : null,
+        catCols[0] ? `Count breakdown by ${catCols[0]}` : null,
+        numCols[0] && catCols[0] ? `${numCols[0]} by ${catCols[0]}` : null
+      ].filter(Boolean);
+
+      renderChips(generatedChips);
+    }
+
     function parseSQLTextOrBinary(fileName, textContent) {
-      // Extract tables and insert statements
       const tableMatches = [...textContent.matchAll(/CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?["`']?([a-zA-Z0-9_]+)["`']?/gi)];
       const tableNames = tableMatches.map(m => m[1]);
 
@@ -1265,11 +1387,10 @@
         activeDataset.tables = {};
         tableNames.forEach(t => { activeDataset.tables[t] = []; });
 
-        // Basic INSERT parser
         tableNames.forEach(t => {
           const insertRegex = new RegExp(`INSERT\\s+INTO\\s+["'\`]?${t}["'\`]?[^;]+;`, 'gi');
           const inserts = textContent.match(insertRegex) || [];
-          activeDataset.tables[t] = inserts.slice(0, 20).map((ins, idx) => ({ id: idx + 1, raw_record: ins.slice(0, 60) + '...' }));
+          activeDataset.tables[t] = inserts.slice(0, 30).map((ins, idx) => ({ id: idx + 1, raw_record: ins.slice(0, 60) + '...' }));
         });
 
         const tblDropdown = document.getElementById('table-dropdown');
@@ -1285,7 +1406,6 @@
         refreshDatasetMetadata();
         executeAnalysis();
       } else {
-        // Fallback: parse lines as CSV
         Papa.parse(textContent, {
           header: true,
           dynamicTyping: true,
@@ -1356,7 +1476,6 @@
       statusText.innerText = 'Inspecting schema & running analytical inference...';
 
       if (apiKey) {
-        // Call Gemini 2.5 Flash directly
         try {
           statusText.innerText = 'Consulting Gemini Flash model for custom analysis...';
           const prompt = `You are Vizpilot AI analyst. Given this dataset schema:
@@ -1366,7 +1485,7 @@ User Question: "${query}"
 
 Return a JSON object with:
 1. "chart_title": string
-2. "plotly_type": "bar" | "scatter" | "box" | "heatmap" | "histogram"
+2. "plotly_type": "bar" | "scatter" | "box" | "heatmap" | "histogram" | "pie"
 3. "x_col": string (column name for X axis)
 4. "y_col": string (column name for Y axis, or null)
 5. "color_col": string (or null)
@@ -1395,27 +1514,113 @@ Return strictly raw JSON.`;
       setTimeout(() => {
         runHeuristicAnalysis(query, rows);
         loader.style.display = 'none';
-      }, 350);
+      }, 300);
     }
 
     function runHeuristicAnalysis(query, rows) {
-      const q = query.toLowerCase();
-      const cols = activeDataset.columns;
-      const numCols = cols.filter(c => rows.some(r => typeof r[c] === 'number'));
+      const q = (query || "").toLowerCase().trim();
+      const cols = activeDataset.columns || Object.keys(rows[0] || {});
+      const numCols = cols.filter(c => rows.some(r => typeof r[c] === 'number' && !isNaN(r[c])));
       const catCols = cols.filter(c => !numCols.includes(c));
 
-      let chartTitle = "Analytical Overview";
+      let chartTitle = "Data Analysis";
       let summary = "";
       let plotData = [];
       let layout = {
+        height: 390,
+        autosize: true,
+        bargap: 0.35,
+        bargroupgap: 0.15,
         paper_bgcolor: 'transparent',
         plot_bgcolor: 'transparent',
-        font: { color: '#94a3b8' },
-        margin: { t: 50, l: 60, r: 30, b: 60 }
+        font: { color: '#94a3b8', family: 'Plus Jakarta Sans, sans-serif' },
+        margin: { t: 45, l: 65, r: 25, b: 55 },
+        xaxis: { gridcolor: 'rgba(255, 255, 255, 0.06)' },
+        yaxis: { gridcolor: 'rgba(255, 255, 255, 0.06)' }
       };
 
-      if (q.includes('corr') || q.includes('heat')) {
-        chartTitle = `Correlation Matrix (${activeDataset.name})`;
+      // 1. MISSING / NULL / NA / EMPTY VALUES (Matches user's exact request!)
+      if (q.includes('missing') || q.includes('null') || q.includes('nan') || q.includes('na ') || q.endsWith(' na') || q.includes('empty')) {
+        chartTitle = `Missing / Null Value Counts by Column (${activeDataset.name})`;
+        const missingCounts = {};
+        const totalRows = rows.length;
+
+        cols.forEach(col => {
+          let count = 0;
+          rows.forEach(r => {
+            const val = r[col];
+            if (val === null || val === undefined || val === '' || val === 'NaN' || (typeof val === 'number' && isNaN(val))) {
+              count++;
+            }
+          });
+          missingCounts[col] = count;
+        });
+
+        const colNames = Object.keys(missingCounts);
+        const counts = Object.values(missingCounts);
+        const colors = counts.map(c => {
+          if (c === 0) return '#10b981'; // Green for 0 missing
+          if (c / totalRows < 0.2) return '#f59e0b'; // Amber for <20%
+          return '#ef4444'; // Red for >=20%
+        });
+
+        plotData = [{
+          x: colNames,
+          y: counts,
+          type: 'bar',
+          marker: { color: colors, line: { color: 'rgba(255,255,255,0.1)', width: 1 } },
+          text: counts.map(c => c > 0 ? `${c} (${((c / totalRows) * 100).toFixed(0)}%)` : '0'),
+          textposition: 'outside',
+          hovertemplate: '<b>%{x}</b><br>Missing: %{y} / ' + totalRows + ' rows<extra></extra>'
+        }];
+
+        layout.title = { text: chartTitle, font: { color: '#f8fafc', size: 15 } };
+        layout.yaxis.title = { text: 'Missing Count' };
+        layout.yaxis.range = [0, Math.max(...counts, 5) * 1.15];
+
+        const topMissing = Object.entries(missingCounts).filter(([_, c]) => c > 0).sort((a,b) => b[1] - a[1]);
+        if (topMissing.length > 0) {
+          summary = `<strong>Executive Summary:</strong> Missing data audit completed across ${cols.length} columns (${totalRows} total rows). Columns containing null values: ` +
+            topMissing.map(([k, c]) => `<strong>${k}</strong> (${c} nulls, ${((c / totalRows) * 100).toFixed(1)}%)`).join(', ') +
+            `. All other columns are 100% complete.`;
+        } else {
+          summary = `<strong>Executive Summary:</strong> Missing data audit passed cleanly. Zero null or empty values detected across all ${cols.length} columns in the dataset.`;
+        }
+      }
+      // 2. SURVIVAL ANALYSIS (Titanic specific & general rate analysis)
+      else if (q.includes('surviv') || (q.includes('class') && q.includes('gender')) || (q.includes('class') && q.includes('sex'))) {
+        chartTitle = "Survival Rate by Passenger Class & Gender";
+        const classes = ['1st Class', '2nd Class', '3rd Class'];
+        const pclassVals = [1, 2, 3];
+
+        const femaleRates = pclassVals.map(pc => {
+          const match = rows.filter(r => (r.Pclass === pc || r.pclass === pc) && String(r.Sex || r.sex).toLowerCase() === 'female');
+          if (!match.length) return 0;
+          const survived = match.filter(r => r.Survived === 1 || r.survived === 1).length;
+          return Number((survived / match.length).toFixed(3));
+        });
+
+        const maleRates = pclassVals.map(pc => {
+          const match = rows.filter(r => (r.Pclass === pc || r.pclass === pc) && String(r.Sex || r.sex).toLowerCase() === 'male');
+          if (!match.length) return 0;
+          const survived = match.filter(r => r.Survived === 1 || r.survived === 1).length;
+          return Number((survived / match.length).toFixed(3));
+        });
+
+        plotData = [
+          { x: classes, y: femaleRates, name: 'Female', type: 'bar', marker: { color: '#6366f1' }, text: femaleRates.map(v => (v * 100).toFixed(1) + '%'), textposition: 'auto' },
+          { x: classes, y: maleRates, name: 'Male', type: 'bar', marker: { color: '#06b6d4' }, text: maleRates.map(v => (v * 100).toFixed(1) + '%'), textposition: 'auto' }
+        ];
+        layout.barmode = 'group';
+        layout.title = { text: chartTitle, font: { color: '#f8fafc', size: 15 } };
+        layout.yaxis.tickformat = ',.0%';
+        layout.yaxis.title = { text: 'Survival Rate' };
+        layout.legend = { font: { color: '#f8fafc' }, orientation: 'h', y: 1.15 };
+        summary = `<strong>Executive Summary:</strong> Disproportionate survival distribution observed: First-Class female passengers achieved the highest survival rate (${(femaleRates[0]*100).toFixed(0)}%), while Third-Class males recorded the lowest (${(maleRates[2]*100).toFixed(0)}%), reflecting maritime evacuation protocols.`;
+      }
+      // 3. CORRELATION MATRIX / HEATMAP
+      else if (q.includes('corr') || q.includes('heat') || q.includes('matrix')) {
+        chartTitle = `Correlation Heatmap (${activeDataset.name})`;
         const targetCols = numCols.slice(0, 8);
         const matrix = [];
         for (let i = 0; i < targetCols.length; i++) {
@@ -1423,9 +1628,8 @@ Return strictly raw JSON.`;
           for (let j = 0; j < targetCols.length; j++) {
             if (i === j) row.push(1.0);
             else {
-              const c1 = targetCols[i], c2 = targetCols[j];
-              const vals1 = rows.map(r => Number(r[c1]) || 0);
-              const vals2 = rows.map(r => Number(r[c2]) || 0);
+              const vals1 = rows.map(r => Number(r[targetCols[i]]) || 0);
+              const vals2 = rows.map(r => Number(r[targetCols[j]]) || 0);
               row.push(calculatePearson(vals1, vals2));
             }
           }
@@ -1437,53 +1641,138 @@ Return strictly raw JSON.`;
           y: targetCols,
           type: 'heatmap',
           colorscale: 'RdBu',
-          reversescale: true
+          reversescale: true,
+          texttemplate: '%{z:.2f}'
         }];
-        layout.title = { text: chartTitle, font: { color: '#f8fafc', size: 16 } };
-        layout.yaxis = { autorange: 'reversed' };
-        summary = `<strong>Executive Summary:</strong> Calculated pairwise Pearson correlations across ${targetCols.length} numerical attributes. Highest co-variance detected along primary metrics.`;
-      } else if (q.includes('dist') || q.includes('outlier') || q.includes('box')) {
-        const targetNum = numCols[0] || cols[0];
-        const groupCol = catCols[0] || null;
+        layout.title = { text: chartTitle, font: { color: '#f8fafc', size: 15 } };
+        layout.yaxis.autorange = 'reversed';
+        summary = `<strong>Executive Summary:</strong> Pairwise Pearson correlation matrix evaluated across ${targetCols.length} numerical columns. Diverging scale highlights areas of strong positive and negative co-variance.`;
+      }
+      // 4. SCATTER PLOT (X vs Y)
+      else if (q.includes('vs') || q.includes('scatter') || q.includes('against')) {
+        let col1 = null, col2 = null;
+        cols.forEach(c => {
+          if (q.includes(c.toLowerCase())) {
+            if (!col1) col1 = c;
+            else if (!col2 && c !== col1) col2 = c;
+          }
+        });
+        if (!col1) col1 = numCols[0] || cols[0];
+        if (!col2) col2 = numCols[1] || cols[1] || cols[0];
+
+        chartTitle = `${col1} vs ${col2} Scatter Relationship`;
+        plotData = [{
+          x: rows.map(r => Number(r[col1]) || 0),
+          y: rows.map(r => Number(r[col2]) || 0),
+          mode: 'markers',
+          type: 'scatter',
+          marker: { color: '#a855f7', size: 9, opacity: 0.85, line: { color: '#fff', width: 0.5 } },
+          hovertemplate: `<b>${col1}</b>: %{x}<br><b>${col2}</b>: %{y}<extra></extra>`
+        }];
+        layout.title = { text: chartTitle, font: { color: '#f8fafc', size: 15 } };
+        layout.xaxis.title = { text: col1 };
+        layout.yaxis.title = { text: col2 };
+        summary = `<strong>Executive Summary:</strong> Bivariate dispersion plot between ${col1} and ${col2}. Scatter points indicate density distribution, clusters, and boundary ranges.`;
+      }
+      // 5. DISTRIBUTION / OUTLIER / BOXPLOT / HISTOGRAM
+      else if (q.includes('dist') || q.includes('outlier') || q.includes('box') || q.includes('histo')) {
+        let targetNum = numCols.find(c => q.includes(c.toLowerCase())) || numCols[0] || cols[0];
+        let groupCol = catCols.find(c => q.includes(c.toLowerCase())) || null;
+
         chartTitle = `Distribution of ${targetNum}${groupCol ? ' by ' + groupCol : ''}`;
-        if (groupCol) {
-          const uniqueGroups = [...new Set(rows.map(r => r[groupCol]))].slice(0, 5);
-          plotData = uniqueGroups.map(g => ({
+        if (groupCol && !q.includes('histo')) {
+          const groups = [...new Set(rows.map(r => r[groupCol]))].filter(Boolean).slice(0, 6);
+          const palette = ['#6366f1', '#06b6d4', '#a855f7', '#10b981', '#f59e0b', '#ec4899'];
+          plotData = groups.map((g, i) => ({
             y: rows.filter(r => r[groupCol] === g).map(r => Number(r[targetNum]) || 0),
             type: 'box',
-            name: String(g)
+            name: String(g),
+            marker: { color: palette[i % palette.length] }
           }));
         } else {
           plotData = [{
-            y: rows.map(r => Number(r[targetNum]) || 0),
-            type: 'box',
+            x: q.includes('histo') ? rows.map(r => Number(r[targetNum]) || 0) : undefined,
+            y: !q.includes('histo') ? rows.map(r => Number(r[targetNum]) || 0) : undefined,
+            type: q.includes('histo') ? 'histogram' : 'box',
             name: targetNum,
             marker: { color: '#6366f1' }
           }];
         }
-        layout.title = { text: chartTitle, font: { color: '#f8fafc', size: 16 } };
-        summary = `<strong>Executive Summary:</strong> Evaluated interquartile ranges and outlier density for ${targetNum}. Data exhibits distinct variance across groupings.`;
-      } else {
-        // Grouped Bar / Top Categories
-        const catCol = catCols[0] || cols[0];
-        const numCol = numCols[0] || cols[1] || cols[0];
-        chartTitle = `${numCol} Aggregation by ${catCol}`;
+        layout.title = { text: chartTitle, font: { color: '#f8fafc', size: 15 } };
+        layout.yaxis.title = { text: targetNum };
+        summary = `<strong>Executive Summary:</strong> Quantile breakdown and dispersion analysis for ${targetNum}. Interquartile range outlines data concentrations and extreme values.`;
+      }
+      // 6. PIE / DONUT / SHARE / PROPORTION
+      else if (q.includes('pie') || q.includes('donut') || q.includes('share') || q.includes('proportion')) {
+        let targetCat = catCols.find(c => q.includes(c.toLowerCase())) || catCols[0] || cols[0];
+        chartTitle = `Share Breakdown by ${targetCat}`;
+        const counts = {};
+        rows.forEach(r => {
+          const val = r[targetCat] !== undefined && r[targetCat] !== null ? String(r[targetCat]) : 'Unknown';
+          counts[val] = (counts[val] || 0) + 1;
+        });
+        plotData = [{
+          labels: Object.keys(counts),
+          values: Object.values(counts),
+          type: 'pie',
+          hole: q.includes('donut') ? 0.45 : 0,
+          marker: { colors: ['#6366f1', '#06b6d4', '#a855f7', '#10b981', '#f59e0b', '#ec4899'] }
+        }];
+        layout.title = { text: chartTitle, font: { color: '#f8fafc', size: 15 } };
+        summary = `<strong>Executive Summary:</strong> Proportional allocation mapped across ${targetCat}. Dominant category represents ${((Math.max(...Object.values(counts)) / rows.length) * 100).toFixed(1)}% of total observed instances.`;
+      }
+      // 7. COUNTS / FREQUENCY / BREAKDOWN (E.g. "Passenger count by embarkation port")
+      else if (q.includes('count') || q.includes('frequen') || q.includes('breakdown') || q.includes('how many')) {
+        let targetCat = catCols.find(c => q.includes(c.toLowerCase())) || catCols[0] || cols[0];
+        chartTitle = `Frequency Distribution by ${targetCat}`;
+        const counts = {};
+        rows.forEach(r => {
+          const val = r[targetCat] !== undefined && r[targetCat] !== null ? String(r[targetCat]) : 'Unknown';
+          counts[val] = (counts[val] || 0) + 1;
+        });
+        const sorted = Object.entries(counts).sort((a,b) => b[1] - a[1]);
+        plotData = [{
+          x: sorted.map(s => s[0]),
+          y: sorted.map(s => s[1]),
+          type: 'bar',
+          marker: { color: '#10b981', line: { color: 'rgba(255,255,255,0.1)', width: 1 } },
+          text: sorted.map(s => s[1]),
+          textposition: 'auto'
+        }];
+        layout.title = { text: chartTitle, font: { color: '#f8fafc', size: 15 } };
+        layout.yaxis.title = { text: 'Count' };
+        layout.xaxis.title = { text: targetCat };
+        summary = `<strong>Executive Summary:</strong> Categorical frequency analysis for ${targetCat}. Modal value is "${sorted[0]?.[0]}" with ${sorted[0]?.[1]} records (${((sorted[0]?.[1] / rows.length) * 100).toFixed(1)}% of dataset).`;
+      }
+      // 8. GENERAL AGGREGATION FALLBACK
+      else {
+        let matchedCat = catCols.find(c => q.includes(c.toLowerCase()));
+        let matchedNum = numCols.find(c => q.includes(c.toLowerCase()));
+
+        const catCol = matchedCat || catCols[0] || cols[0];
+        const numCol = matchedNum || (numCols.find(c => c !== 'PassengerId') || numCols[0] || cols[1] || cols[0]);
+        chartTitle = `${numCol} Summary by ${catCol}`;
 
         const groups = {};
         rows.forEach(r => {
-          const key = r[catCol] || 'Unknown';
+          const key = r[catCol] !== undefined && r[catCol] !== null ? String(r[catCol]) : 'Unknown';
           groups[key] = (groups[key] || 0) + (Number(r[numCol]) || 1);
         });
 
         const sorted = Object.entries(groups).sort((a,b) => b[1] - a[1]).slice(0, 10);
         plotData = [{
           x: sorted.map(s => s[0]),
-          y: sorted.map(s => s[1]),
+          y: sorted.map(s => Number(s[1].toFixed(2))),
           type: 'bar',
-          marker: { color: '#06b6d4' }
+          marker: { color: '#06b6d4', line: { color: 'rgba(255,255,255,0.1)', width: 1 } },
+          text: sorted.map(s => Number(s[1].toFixed(1))),
+          textposition: 'auto'
         }];
-        layout.title = { text: chartTitle, font: { color: '#f8fafc', size: 16 } };
-        summary = `<strong>Executive Summary:</strong> Aggregated top categories along ${catCol}. Top ranked item represents ${((sorted[0]?.[1] || 1) / Object.values(groups).reduce((a,b)=>a+b, 0) * 100).toFixed(1)}% of total observed volume.`;
+        layout.title = { text: chartTitle, font: { color: '#f8fafc', size: 15 } };
+        layout.xaxis.title = { text: catCol };
+        layout.yaxis.title = { text: numCol };
+        const total = Object.values(groups).reduce((a,b)=>a+b, 0);
+        summary = `<strong>Executive Summary:</strong> Aggregation of ${numCol} grouped by ${catCol}. Top-ranked group "${sorted[0]?.[0]}" constitutes ${total > 0 ? ((sorted[0]?.[1] / total) * 100).toFixed(1) : 0}% of cumulative value.`;
       }
 
       document.getElementById('chart-display-title').innerText = chartTitle;
@@ -1519,11 +1808,14 @@ Return strictly raw JSON.`;
         marker: { color: '#6366f1' }
       }];
       const layout = {
-        title: { text: spec.chart_title, font: { color: '#f8fafc', size: 16 } },
+        height: 390,
+        autosize: true,
+        bargap: 0.35,
+        title: { text: spec.chart_title, font: { color: '#f8fafc', size: 15 } },
         paper_bgcolor: 'transparent',
         plot_bgcolor: 'transparent',
-        font: { color: '#94a3b8' },
-        margin: { t: 50, l: 60, r: 30, b: 60 }
+        font: { color: '#94a3b8', family: 'Plus Jakarta Sans, sans-serif' },
+        margin: { t: 45, l: 65, r: 25, b: 55 }
       };
       Plotly.newPlot('live-plotly-canvas', plotData, layout, { responsive: true, displayModeBar: false });
     }
@@ -1541,6 +1833,14 @@ Return strictly raw JSON.`;
     window.addEventListener('DOMContentLoaded', () => {
       const savedKey = sessionStorage.getItem('vizpilot_gemini_key');
       if (savedKey) document.getElementById('gemini-user-key').value = savedKey;
+
+      const queryInput = document.getElementById('user-nl-query');
+      if (queryInput) {
+        queryInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') executeAnalysis();
+        });
+      }
+
       loadSampleData('titanic');
     });
   </script>
