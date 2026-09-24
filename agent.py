@@ -54,8 +54,15 @@ class CopilotState(TypedDict, total=False):
 
 
 def _get_gemini_api_key() -> Optional[str]:
-    """Retrieve Gemini API key from environment or local api_key file."""
+    """Retrieve Gemini API key from environment, Streamlit secrets, or local api_key file."""
     api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+    if not api_key:
+        try:
+            import streamlit as st
+            if hasattr(st, "secrets"):
+                api_key = st.secrets.get("GEMINI_API_KEY") or st.secrets.get("GOOGLE_API_KEY")
+        except Exception:
+            pass
     if not api_key:
         api_key_file = Path("api_key")
         if api_key_file.exists():

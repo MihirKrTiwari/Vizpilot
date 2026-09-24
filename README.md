@@ -9,18 +9,23 @@ language question, then:
 4. On failure, feeds the traceback back to the LLM and retries (up to 3 times).
 5. On success, produces an executive-summary markdown report alongside the interactive chart.
 
-## Architecture
+## Architecture & Repository Structure
 
 ```
-copilot/
-├── agent.py          # LangGraph state machine (nodes, prompts, routing)
-├── sandbox.py         # Isolated subprocess code execution + safety guards
-├── app.py             # Streamlit chat UI
-├── requirements.txt
-├── .env.example
-└── static/
-    ├── uploads/        # uploaded datasets land here
-    └── artifacts/      # generated chart HTML/PNG land here
+.
+├── .streamlit/
+│   ├── config.toml           # Sleek dark theme & server upload limits
+│   └── secrets.toml.example  # Template for API keys on Streamlit Cloud
+├── static/
+│   ├── uploads/              # Uploaded user datasets (.gitkeep tracked)
+│   └── artifacts/            # Generated chart HTML/PNG artifacts (.gitkeep tracked)
+├── agent.py                  # LangGraph state machine (nodes, prompts, routing)
+├── sandbox.py                # Isolated subprocess execution + security guards
+├── app.py                    # Streamlit frontend application
+├── requirements.txt          # Python dependencies
+├── .env.example              # Local environment variables template
+├── .gitignore                # Production git ignore rules
+└── README.md
 ```
 
 ### Graph flow
@@ -33,7 +38,34 @@ inspect_schema -> generate_code -> execute_code --(success)--> synthesize_insigh
                                           +--(error, retries >= 3)--> error_abort -> END
 ```
 
-## 1. Setup
+---
+
+## 🌐 Deploy to Web via Streamlit Community Cloud (Free)
+
+Because this application requires a Python runtime (LangGraph, Pandas, and sandboxed code execution), it can be deployed for free with 1 click directly connected to your GitHub repository:
+
+1. **Push this repository to GitHub**:
+   ```bash
+   git add .
+   git commit -m "Configure repo for hosting"
+   git push origin main
+   ```
+2. **Go to [share.streamlit.io](https://share.streamlit.io)** and log in with your GitHub account.
+3. **Click "New app"**:
+   - **Repository:** `YourUsername/your-repo-name`
+   - **Branch:** `main`
+   - **Main file path:** `app.py`
+4. **Add your Gemini API Key in Streamlit Secrets**:
+   - In your app dashboard, go to **Settings** > **Secrets**.
+   - Paste:
+     ```toml
+     GEMINI_API_KEY = "your_actual_gemini_api_key_here"
+     ```
+   - Click **Save**. Your app will automatically build and go live at `https://<your-app-name>.streamlit.app`!
+
+---
+
+## 💻 Local Setup & Development
 
 ```bash
 python -m venv .venv
@@ -42,13 +74,10 @@ source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
 cp .env.example .env
-# then edit .env and paste your ANTHROPIC_API_KEY
+# Edit .env and paste your GEMINI_API_KEY
 ```
 
-> The agent defaults to `langchain-anthropic` / Claude. To use OpenAI or Gemini instead,
-> swap `get_llm()` in `agent.py` for `ChatOpenAI` or `ChatGoogleGenerativeAI` (both are
-> drop-in `langchain-core` chat models) and uncomment the relevant SDK in
-> `requirements.txt`.
+> The agent defaults to Google Gemini (`ChatGoogleGenerativeAI` with `gemini-3.6-flash` or `gemini-2.5-flash`). To use OpenAI or Anthropic instead, swap `get_llm()` in [agent.py](file:///Users/mihirkumartiwari/Documents/AI_ML_Lab/agent.py) and uncomment the relevant SDK in [requirements.txt](file:///Users/mihirkumartiwari/Documents/AI_ML_Lab/requirements.txt).
 
 ## 2. Run
 
