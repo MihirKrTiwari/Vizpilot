@@ -13,15 +13,25 @@ language question, then:
 
 ```
 .
+├── .github/
+│   └── workflows/
+│       └── static.yml        # GitHub Actions workflow for GitHub Pages
 ├── .streamlit/
 │   ├── config.toml           # Sleek dark theme & server upload limits
 │   └── secrets.toml.example  # Template for API keys on Streamlit Cloud
+├── src/                      # Core agent & execution package
+│   ├── __init__.py           # Package exports
+│   ├── agent.py              # LangGraph state machine (nodes, prompts, routing)
+│   └── sandbox.py            # Isolated subprocess execution + security guards
+├── tests/                    # Automated test suite
+│   ├── __init__.py
+│   └── test_agent.py         # Unit tests (safety checks, SQLite, graph compilation)
 ├── static/
 │   ├── uploads/              # Uploaded user datasets (.gitkeep tracked)
 │   └── artifacts/            # Generated chart HTML/PNG artifacts (.gitkeep tracked)
-├── agent.py                  # LangGraph state machine (nodes, prompts, routing)
-├── sandbox.py                # Isolated subprocess execution + security guards
-├── app.py                    # Streamlit frontend application
+├── app.py                    # Streamlit web application frontend
+├── index.html                # In-browser data analysis lab & GitHub Pages site
+├── .nojekyll                 # Jekyll bypass for GitHub Pages
 ├── requirements.txt          # Python dependencies
 ├── .env.example              # Local environment variables template
 ├── .gitignore                # Production git ignore rules
@@ -77,7 +87,7 @@ cp .env.example .env
 # Edit .env and paste your GEMINI_API_KEY
 ```
 
-> The agent defaults to Google Gemini (`ChatGoogleGenerativeAI` with `gemini-3.6-flash` or `gemini-2.5-flash`). To use OpenAI or Anthropic instead, swap `get_llm()` in [agent.py](file:///Users/mihirkumartiwari/Documents/AI_ML_Lab/agent.py) and uncomment the relevant SDK in [requirements.txt](file:///Users/mihirkumartiwari/Documents/AI_ML_Lab/requirements.txt).
+> The agent defaults to Google Gemini (`ChatGoogleGenerativeAI` with `gemini-3.6-flash` or `gemini-2.5-flash`). To use OpenAI or Anthropic instead, swap `get_llm()` in [src/agent.py](file:///Users/mihirkumartiwari/Documents/AI_ML_Lab/src/agent.py) and uncomment the relevant SDK in [requirements.txt](file:///Users/mihirkumartiwari/Documents/AI_ML_Lab/requirements.txt).
 
 ## 2. Run
 
@@ -87,16 +97,20 @@ streamlit run app.py
 
 Then open the local URL Streamlit prints (usually `http://localhost:8501`).
 
-1. Drop a `.csv`, `.json`, `.xlsx`, or `.sqlite` file in the sidebar.
-2. Ask a question in the chat box, e.g. *"What's the correlation between price and
-   rating, broken down by category?"*
-3. Watch the live status trace (Inspecting Schema → Generating Code → Running Analysis →
-   ...) and get back an interactive chart + markdown summary.
+1. Drop a `.csv`, `.json`, `.xlsx`, or `.sqlite` file in the sidebar (or provide a Database URI).
+2. Ask a question in the chat box, e.g. *"What's the correlation between price and rating, broken down by category?"*
+3. Watch the live status trace (Inspecting Schema → Generating Code → Running Analysis → ...) and get back an interactive chart + markdown summary.
 
 ## 3. CLI usage (no UI)
 
 ```bash
-python agent.py path/to/data.csv "What are the top 5 categories by revenue?"
+python -m src.agent path/to/data.csv "What are the top 5 categories by revenue?"
+```
+
+## 4. Run Automated Test Suite
+
+```bash
+python -m unittest discover tests/
 ```
 
 This runs the graph once and prints the final summary plus the artifact path.

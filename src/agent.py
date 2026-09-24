@@ -27,7 +27,10 @@ from langgraph.graph import StateGraph, END
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 
-import sandbox
+try:
+    from src import sandbox
+except ImportError:
+    import sandbox
 
 MAX_RETRIES = 3
 ARTIFACTS_DIR = os.environ.get("ARTIFACTS_DIR", "static/artifacts")

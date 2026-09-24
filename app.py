@@ -9,6 +9,7 @@ Run with:  streamlit run app.py
 from __future__ import annotations
 
 import os
+import sys
 import uuid
 from pathlib import Path
 
@@ -18,7 +19,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-import agent  # noqa: E402  (import after load_dotenv so env vars are set)
+# Ensure src/ package is in path
+sys.path.insert(0, str(Path(__file__).parent / "src"))
+try:
+    from src import agent
+except ImportError:
+    import agent  # noqa: E402
 
 UPLOAD_DIR = Path("static/uploads")
 ARTIFACTS_DIR = Path(os.environ.get("ARTIFACTS_DIR", "static/artifacts"))
