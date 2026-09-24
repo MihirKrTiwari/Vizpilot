@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vizpilot — Autonomous Data Analysis & Visualization Copilot</title>
+  <meta name="description" content="LangGraph-powered AI copilot that inspects raw datasets, writes and executes Pandas and Plotly code in a sandboxed environment, and delivers interactive visualizations." />
+
+  <!-- Fonts & Plotly.js -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --bg-card: rgba(17, 24, 39, 0.75);
+      --bg-card-hover: rgba(30, 41, 59, 0.85);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --border-glow: rgba(99, 102, 241, 0.35);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --primary: #6366f1;
+      --primary-light: #818cf8;
+      --accent: #06b6d4;
+      --accent-purple: #a855f7;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --gradient-brand: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #06b6d4 100%);
+      --gradient-card: linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      line-height: 1.6;
+      overflow-x: hidden;
+      min-height: 100vh;
+    }
+
+    /* Ambient Background Glows */
+    .ambient-glow {
+      position: fixed;
+      width: 600px;
+      height: 600px;
+      border-radius: 50%;
+      filter: blur(140px);
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.18;
+    }
+    .glow-1 {
+      top: -150px;
+      left: 15%;
+      background: radial-gradient(circle, #6366f1, #a855f7);
+    }
+    .glow-2 {
+      top: 40%;
+      right: -100px;
+      background: radial-gradient(circle, #06b6d4, #3b82f6);
+    }
+
+    /* Header & Navigation */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      background: rgba(9, 13, 22, 0.8);
+      border-bottom: 1px solid var(--border-color);
+    }
+    .nav-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 1rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .logo-group {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      text-decoration: none;
+    }
+    .logo-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      background: var(--gradient-brand);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+    }
+    .logo-title {
+      font-size: 1.35rem;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: -0.02em;
+    }
+    .logo-title span {
+      background: var(--gradient-brand);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+    .nav-link {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.95rem;
+      font-weight: 500;
+      transition: color 0.2s ease;
+    }
+    .nav-link:hover {
+      color: #fff;
+    }
+    .btn-nav {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #fff;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: all 0.2s ease;
+    }
+    .btn-nav:hover {
+      background: rgba(255, 255, 255, 0.16);
+      border-color: rgba(255, 255, 255, 0.3);
+      transform: translateY(-1px);
+    }
+
+    /* Main Container */
+    main {
+      position: relative;
+      z-index: 1;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 3rem 1.5rem 6rem;
+    }
+
+    /* Hero Section */
+    .hero {
+      text-align: center;
+      max-width: 850px;
+      margin: 2rem auto 5rem;
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.4rem 1rem;
+      border-radius: 9999px;
+      background: rgba(99, 102, 241, 0.12);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      color: var(--primary-light);
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 1.5rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .badge-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 10px #10b981;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+    .hero h1 {
+      font-size: 3.5rem;
+      font-weight: 800;
+      line-height: 1.15;
+      letter-spacing: -0.03em;
+      margin-bottom: 1.5rem;
+    }
+    .gradient-text {
+      background: var(--gradient-brand);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .hero p {
+      font-size: 1.2rem;
+      color: var(--text-muted);
+      margin-bottom: 2.2rem;
+      font-weight: 400;
+    }
+    .hero-actions {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .btn-primary {
+      background: var(--gradient-brand);
+      color: #fff;
+      font-weight: 600;
+      padding: 0.85rem 1.8rem;
+      border-radius: 10px;
+      text-decoration: none;
+      font-size: 1rem;
+      box-shadow: 0 4px 25px rgba(99, 102, 241, 0.4);
+      transition: all 0.2s ease;
+      border: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(99, 102, 241, 0.6);
+    }
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      font-weight: 600;
+      padding: 0.85rem 1.8rem;
+      border-radius: 10px;
+      text-decoration: none;
+      font-size: 1rem;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.2);
+      transform: translateY(-2px);
+    }
+
+    /* Live Interactive Showcase Card */
+    .showcase-section {
+      margin-bottom: 6rem;
+    }
+    .section-header {
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+    .section-header h2 {
+      font-size: 2.2rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.6rem;
+    }
+    .section-header p {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+    }
+
+    .demo-window {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 18px;
+      overflow: hidden;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.7);
+    }
+    .window-header {
+      background: rgba(15, 23, 42, 0.85);
+      padding: 1rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .window-dots {
+      display: flex;
+      gap: 7px;
+    }
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+    .dot-red { background: #ef4444; }
+    .dot-yellow { background: #f59e0b; }
+    .dot-green { background: #10b981; }
+
+    .window-tabs {
+      display: flex;
+      gap: 0.5rem;
+    }
+    .demo-tab {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      padding: 0.45rem 1rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .demo-tab.active {
+      background: rgba(99, 102, 241, 0.15);
+      border-color: rgba(99, 102, 241, 0.35);
+      color: #fff;
+    }
+    .demo-tab:hover:not(.active) {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .demo-body {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      min-height: 580px;
+    }
+    @media (max-width: 900px) {
+      .demo-body {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .demo-sidebar {
+      padding: 1.5rem;
+      border-right: 1px solid var(--border-color);
+      background: rgba(10, 15, 26, 0.6);
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+    .sidebar-label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .query-selector {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+    .query-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .query-card:hover {
+      background: rgba(255, 255, 255, 0.07);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+    .query-card.active {
+      background: rgba(99, 102, 241, 0.12);
+      border-color: var(--primary-light);
+    }
+    .query-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 0.25rem;
+    }
+    .query-meta {
+      font-size: 0.78rem;
+      color: var(--text-dim);
+    }
+
+    /* Status Flow Stepper */
+    .flow-stepper {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+    }
+    .step-item {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+    .step-badge {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: rgba(16, 185, 129, 0.15);
+      color: #10b981;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      font-weight: bold;
+    }
+
+    .code-snippet-box {
+      background: #060911;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      padding: 0.8rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      color: #a5b4fc;
+      overflow-x: auto;
+      max-height: 140px;
+    }
+
+    /* Plotly Canvas Area */
+    .demo-viewport {
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      background: rgba(15, 23, 42, 0.4);
+    }
+    .plot-container {
+      flex: 1;
+      min-height: 480px;
+      width: 100%;
+    }
+    .insight-summary {
+      background: rgba(255, 255, 255, 0.03);
+      border-left: 3px solid var(--accent);
+      padding: 0.85rem 1rem;
+      border-radius: 0 8px 8px 0;
+      margin-top: 1rem;
+      font-size: 0.88rem;
+      color: #cbd5e1;
+    }
+
+    /* Feature Grid */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 6rem;
+    }
+    .feature-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 1.8rem;
+      transition: all 0.3s ease;
+      position: relative;
+    }
+    .feature-card:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--border-glow);
+      transform: translateY(-4px);
+    }
+    .feature-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: rgba(99, 102, 241, 0.12);
+      border: 1px solid rgba(99, 102, 241, 0.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      margin-bottom: 1.2rem;
+    }
+    .feature-card h3 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: 0.6rem;
+      color: #fff;
+    }
+    .feature-card p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+
+    /* Graph Architecture Section */
+    .arch-section {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 18px;
+      padding: 3rem 2rem;
+      margin-bottom: 6rem;
+      text-align: center;
+    }
+    .pipeline-nodes {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin: 2.5rem 0 1.5rem;
+    }
+    .pipe-node {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1rem 1.4rem;
+      font-weight: 600;
+      font-size: 0.92rem;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      transition: all 0.2s ease;
+    }
+    .pipe-node:hover {
+      border-color: var(--primary-light);
+      background: rgba(99, 102, 241, 0.1);
+      transform: scale(1.03);
+    }
+    .pipe-arrow {
+      color: var(--text-dim);
+      font-size: 1.2rem;
+    }
+
+    /* Setup / Code Block Section */
+    .code-terminal {
+      background: #070a13;
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      max-width: 800px;
+      margin: 0 auto 5rem;
+      overflow: hidden;
+    }
+    .terminal-header {
+      background: #0f172a;
+      padding: 0.75rem 1.25rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border-color);
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+    .terminal-body {
+      padding: 1.5rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.9rem;
+      color: #e2e8f0;
+      overflow-x: auto;
+      line-height: 1.8;
+    }
+    .cmd-line {
+      display: flex;
+      gap: 0.75rem;
+    }
+    .cmd-prompt {
+      color: #10b981;
+      user-select: none;
+    }
+    .cmd-comment {
+      color: #64748b;
+    }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border-color);
+      padding: 3rem 1.5rem;
+      text-align: center;
+      color: var(--text-dim);
+      font-size: 0.9rem;
+    }
+    footer a {
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.2s ease;
+    }
+    footer a:hover {
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+  <!-- Ambient Gradient Orbs -->
+  <div class="ambient-glow glow-1"></div>
+  <div class="ambient-glow glow-2"></div>
+
+  <!-- Navigation -->
+  <header>
+    <div class="nav-container">
+      <a href="#" class="logo-group" id="nav-brand-logo">
+        <div class="logo-icon">📊</div>
+        <div class="logo-title">Viz<span>pilot</span></div>
+      </a>
+      <nav class="nav-links">
+        <a href="#showcase" class="nav-link" id="nav-link-demo">Live Demo</a>
+        <a href="#architecture" class="nav-link" id="nav-link-arch">Architecture</a>
+        <a href="#features" class="nav-link" id="nav-link-features">Features</a>
+        <a href="#quickstart" class="nav-link" id="nav-link-quickstart">Quickstart</a>
+        <a href="https://github.com" target="_blank" rel="noopener noreferrer" class="btn-nav" id="btn-github-repo">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+          </svg>
+          GitHub
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <!-- Hero Section -->
+    <section class="hero" id="hero-section">
+      <div class="hero-badge">
+        <span class="badge-dot"></span>
+        Autonomous LangGraph Agent
+      </div>
+      <h1>
+        Turn Raw Datasets into <br />
+        <span class="gradient-text">Interactive Insights & Visualizations</span>
+      </h1>
+      <p>
+        An intelligent AI copilot that inspects schemas, generates robust Pandas and Plotly code,
+        executes safely in an isolated sandbox, self-corrects runtime errors, and produces executive summaries.
+      </p>
+      <div class="hero-actions">
+        <a href="#showcase" class="btn-primary" id="btn-explore-demo">
+          ⚡ Explore Live Demo
+        </a>
+        <a href="#quickstart" class="btn-secondary" id="btn-view-quickstart">
+          Get Started in 60s
+        </a>
+      </div>
+    </section>
+
+    <!-- Interactive Showcase Section -->
+    <section class="showcase-section" id="showcase">
+      <div class="section-header">
+        <h2>Live Copilot Interactive Sandbox</h2>
+        <p>Experience real-time interactive Plotly visualizations generated dynamically by the agent.</p>
+      </div>
+
+      <div class="demo-window" id="demo-interactive-window">
+        <div class="window-header">
+          <div class="window-dots">
+            <div class="dot dot-red"></div>
+            <div class="dot dot-yellow"></div>
+            <div class="dot dot-green"></div>
+          </div>
+          <div class="window-tabs">
+            <button class="demo-tab active" id="tab-correlation" onclick="switchDemo('correlation')">Correlation Heatmap</button>
+            <button class="demo-tab" id="tab-survival" onclick="switchDemo('survival')">Survival Breakdown</button>
+            <button class="demo-tab" id="tab-outliers" onclick="switchDemo('outliers')">Fare Distribution</button>
+          </div>
+        </div>
+
+        <div class="demo-body">
+          <!-- Left Copilot Pipeline Simulation -->
+          <div class="demo-sidebar">
+            <div class="sidebar-label">Natural Language Queries</div>
+            <div class="query-selector">
+              <div class="query-card active" id="qcard-correlation" onclick="switchDemo('correlation')">
+                <div class="query-title">"What is the correlation between all numerical features?"</div>
+                <div class="query-meta">Dataset: titanic.csv • Method: Pearson Matrix</div>
+              </div>
+              <div class="query-card" id="qcard-survival" onclick="switchDemo('survival')">
+                <div class="query-title">"How did survival rates vary by passenger class and gender?"</div>
+                <div class="query-meta">Dataset: titanic.csv • Method: Grouped Bar Chart</div>
+              </div>
+              <div class="query-card" id="qcard-outliers" onclick="switchDemo('outliers')">
+                <div class="query-title">"What is the distribution of ticket fares across embarkation ports?"</div>
+                <div class="query-meta">Dataset: titanic.csv • Method: Box & Outlier Plot</div>
+              </div>
+            </div>
+
+            <div class="sidebar-label">Agent State Transitions</div>
+            <div class="flow-stepper">
+              <div class="step-item"><span class="step-badge">✓</span> <span>Inspect Schema (9 columns, 891 rows)</span></div>
+              <div class="step-item"><span class="step-badge">✓</span> <span>Synthesize Pandas + Plotly Script</span></div>
+              <div class="step-item"><span class="step-badge">✓</span> <span>Execute Sandbox (0.18s, 0 retries)</span></div>
+              <div class="step-item"><span class="step-badge">✓</span> <span>Generated Interactive Plotly HTML</span></div>
+            </div>
+
+            <div class="sidebar-label">Sandboxed Python Snippet</div>
+            <div class="code-snippet-box" id="demo-code-box">
+fig = px.imshow(
+    df.corr(numeric_only=True),
+    text_auto=".2f",
+    color_continuous_scale="RdBu_r",
+    title="Feature Correlation Matrix"
+)
+            </div>
+          </div>
+
+          <!-- Right Plotly Chart Viewport -->
+          <div class="demo-viewport">
+            <div id="plotly-demo-canvas" class="plot-container"></div>
+            <div class="insight-summary" id="demo-insight-text">
+              <strong>Executive Summary:</strong> Strongest negative correlation observed between passenger class and fare (-0.55). Survival shows significant positive correlation with gender (female passengers survived at 74% vs 18% for males).
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Architecture Section -->
+    <section class="arch-section" id="architecture">
+      <div class="section-header">
+        <h2>Autonomous LangGraph Architecture</h2>
+        <p>Built as a cyclic state machine with autonomous self-correction loops.</p>
+      </div>
+
+      <div class="pipeline-nodes">
+        <div class="pipe-node" id="node-schema">
+          <span>🔍</span> inspect_schema
+        </div>
+        <div class="pipe-arrow">➔</div>
+        <div class="pipe-node" id="node-generate">
+          <span>🧠</span> generate_code
+        </div>
+        <div class="pipe-arrow">➔</div>
+        <div class="pipe-node" id="node-sandbox">
+          <span>⚙️</span> execute_code
+        </div>
+        <div class="pipe-arrow">➔</div>
+        <div class="pipe-node" style="border-color: rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.1);" id="node-insights">
+          <span>📝</span> synthesize_insights
+        </div>
+      </div>
+
+      <p style="color: var(--text-muted); font-size: 0.95rem; max-width: 650px; margin: 0 auto;">
+        If a traceback occurs during execution, the failure signal loops into <code>self_correct</code>
+        with up to 3 automatic retries before gracefully completing.
+      </p>
+    </section>
+
+    <!-- Key Features Grid -->
+    <section id="features">
+      <div class="section-header">
+        <h2>Enterprise-Grade Capabilities</h2>
+        <p>Engineered for safety, analytical precision, and responsive performance.</p>
+      </div>
+
+      <div class="features-grid">
+        <div class="feature-card" id="card-feature-sandbox">
+          <div class="feature-icon">🛡️</div>
+          <h3>Subprocess Sandbox</h3>
+          <p>Runs untrusted LLM-generated code in isolated <code>python -I</code> subprocesses with hard wall-clock timeouts and 512MB RAM ceilings.</p>
+        </div>
+
+        <div class="feature-card" id="card-feature-loop">
+          <div class="feature-icon">🩹</div>
+          <h3>Self-Correcting Loop</h3>
+          <p>Feeds compilation errors and runtime exceptions back into the model to heal bugs autonomously without user intervention.</p>
+        </div>
+
+        <div class="feature-card" id="card-feature-formats">
+          <div class="feature-icon">📁</div>
+          <h3>Multi-Format Ingestion</h3>
+          <p>Zero configuration required for CSV, JSON, Excel (.xlsx, .xls), and SQLite (.db, .sqlite3) datasets.</p>
+        </div>
+
+        <div class="feature-card" id="card-feature-plotly">
+          <div class="feature-icon">📈</div>
+          <h3>Interactive Plotly Figures</h3>
+          <p>Exports interactive web-ready HTML visualizations and static high-resolution PNGs with automatic tooltips and zoom.</p>
+        </div>
+
+        <div class="feature-card" id="card-feature-models">
+          <div class="feature-icon">⚡</div>
+          <h3>Provider Agnostic</h3>
+          <p>Pre-configured for Google Gemini, with drop-in support for Anthropic Claude and OpenAI GPT-4o models.</p>
+        </div>
+
+        <div class="feature-card" id="card-feature-ui">
+          <div class="feature-icon">💻</div>
+          <h3>Streamlit & CLI Ready</h3>
+          <p>Offers both a real-time reactive Streamlit web interface and a headless CLI runner for automated pipeline integration.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Quickstart & Installation -->
+    <section id="quickstart">
+      <div class="section-header">
+        <h2>Deploy or Run Locally</h2>
+        <p>Get up and running in less than two minutes.</p>
+      </div>
+
+      <div class="code-terminal" id="terminal-quickstart">
+        <div class="terminal-header">
+          <span>bash — setup & run</span>
+          <span>bash</span>
+        </div>
+        <div class="terminal-body">
+          <div class="cmd-line"><span class="cmd-comment"># 1. Clone & activate virtual environment</span></div>
+          <div class="cmd-line"><span class="cmd-prompt">$</span> <span>git clone https://github.com/MihirKrTiwari/Vizpilot.git</span></div>
+          <div class="cmd-line"><span class="cmd-prompt">$</span> <span>cd Vizpilot && python3 -m venv .venv && source .venv/bin/activate</span></div>
+          <br />
+          <div class="cmd-line"><span class="cmd-comment"># 2. Install dependencies & configure keys</span></div>
+          <div class="cmd-line"><span class="cmd-prompt">$</span> <span>pip install -r requirements.txt</span></div>
+          <div class="cmd-line"><span class="cmd-prompt">$</span> <span>cp .env.example .env  # set GEMINI_API_KEY</span></div>
+          <br />
+          <div class="cmd-line"><span class="cmd-comment"># 3. Launch Streamlit UI or run via CLI</span></div>
+          <div class="cmd-line"><span class="cmd-prompt">$</span> <span>streamlit run app.py</span></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>© 2026 Vizpilot. Autonomous Data Analysis & Dynamic Visualization Copilot.</p>
+    <p style="margin-top: 0.5rem;">Powered by LangGraph, Streamlit, and Plotly.</p>
+  </footer>
+
+  <script>
+    // Demo Charts Data & Rendering
+    const demoConfigs = {
+      correlation: {
+        code: `fig = px.imshow(\n    corr_matrix,\n    text_auto=".2f",\n    color_continuous_scale="RdBu_r",\n    title="Feature Correlation Matrix (Titanic Dataset)"\n)`,
+        summary: "<strong>Executive Summary:</strong> Strongest negative correlation observed between passenger class and fare (-0.55). Survival shows significant positive correlation with gender (female passengers survived at 74% vs 18% for males).",
+        plot: () => {
+          const features = ['Survived', 'Pclass', 'Age', 'SibSp', 'Parch', 'Fare', 'Female', 'Cabin'];
+          const zValues = [
+            [1.00, -0.34, -0.08, -0.04,  0.08,  0.26,  0.54,  0.32],
+            [-0.34, 1.00, -0.37,  0.08,  0.02, -0.55, -0.13, -0.73],
+            [-0.08, -0.37, 1.00, -0.31, -0.19,  0.10, -0.09,  0.25],
+            [-0.04,  0.08, -0.31, 1.00,  0.41,  0.16,  0.11, -0.04],
+            [ 0.08,  0.02, -0.19, 0.41,  1.00,  0.22,  0.25,  0.04],
+            [ 0.26, -0.55,  0.10, 0.16,  0.22,  1.00,  0.18,  0.48],
+            [ 0.54, -0.13, -0.09, 0.11,  0.25,  0.18,  1.00,  0.15],
+            [ 0.32, -0.73,  0.25, -0.04, 0.04,  0.48,  0.15,  1.00]
+          ];
+          const data = [{
+            z: zValues,
+            x: features,
+            y: features,
+            type: 'heatmap',
+            colorscale: 'RdBu',
+            reversescale: true,
+            hoverongaps: false
+          }];
+          const layout = {
+            title: { text: 'Feature Correlation Matrix', font: { color: '#f8fafc', size: 16 } },
+            paper_bgcolor: 'transparent',
+            plot_bgcolor: 'transparent',
+            font: { color: '#94a3b8' },
+            margin: { t: 50, l: 70, r: 30, b: 60 },
+            xaxis: { gridcolor: 'rgba(255,255,255,0.05)' },
+            yaxis: { gridcolor: 'rgba(255,255,255,0.05)', autorange: 'reversed' }
+          };
+          Plotly.newPlot('plotly-demo-canvas', data, layout, { responsive: true, displayModeBar: false });
+        }
+      },
+      survival: {
+        code: `fig = px.bar(\n    df.groupby(['Pclass', 'Sex'])['Survived'].mean().reset_index(),\n    x='Pclass', y='Survived', color='Sex',\n    barmode='group', title="Survival Rate by Class & Gender"\n)`,
+        summary: "<strong>Executive Summary:</strong> 96.8% of First-Class female passengers survived, compared to 36.8% of First-Class males and only 13.5% of Third-Class males, highlighting stark disparities across socioeconomic class and gender.",
+        plot: () => {
+          const trace1 = {
+            x: ['1st Class', '2nd Class', '3rd Class'],
+            y: [0.968, 0.921, 0.500],
+            name: 'Female',
+            type: 'bar',
+            marker: { color: '#6366f1' }
+          };
+          const trace2 = {
+            x: ['1st Class', '2nd Class', '3rd Class'],
+            y: [0.368, 0.157, 0.135],
+            name: 'Male',
+            type: 'bar',
+            marker: { color: '#06b6d4' }
+          };
+          const layout = {
+            title: { text: 'Survival Rate by Class & Gender', font: { color: '#f8fafc', size: 16 } },
+            barmode: 'group',
+            paper_bgcolor: 'transparent',
+            plot_bgcolor: 'transparent',
+            font: { color: '#94a3b8' },
+            yaxis: { tickformat: ',.0%', gridcolor: 'rgba(255,255,255,0.08)' },
+            xaxis: { gridcolor: 'transparent' },
+            legend: { font: { color: '#f8fafc' } },
+            margin: { t: 50, l: 60, r: 30, b: 60 }
+          };
+          Plotly.newPlot('plotly-demo-canvas', [trace1, trace2], layout, { responsive: true, displayModeBar: false });
+        }
+      },
+      outliers: {
+        code: `fig = px.box(\n    df, x='Embarked', y='Fare', color='Embarked',\n    points='outliers', title="Ticket Fare Distribution by Port"\n)`,
+        summary: "<strong>Executive Summary:</strong> Passengers embarking from Cherbourg (C) had a significantly higher median fare ($54.50) with high outlier fares reaching up to $512.33, compared to Southampton ($13.00) and Queenstown ($7.75).",
+        plot: () => {
+          const yCherbourg = [27.7, 71.3, 110.8, 227.5, 262.3, 512.3, 30.0, 56.9, 89.1, 153.4];
+          const ySouthampton = [8.05, 13.0, 26.0, 53.1, 7.25, 10.5, 30.5, 69.5, 16.1, 24.1];
+          const yQueenstown = [7.75, 7.75, 8.05, 12.35, 15.5, 7.89, 7.75, 24.15];
+          const data = [
+            { y: yCherbourg, type: 'box', name: 'Cherbourg (C)', marker: { color: '#a855f7' } },
+            { y: ySouthampton, type: 'box', name: 'Southampton (S)', marker: { color: '#3b82f6' } },
+            { y: yQueenstown, type: 'box', name: 'Queenstown (Q)', marker: { color: '#10b981' } }
+          ];
+          const layout = {
+            title: { text: 'Ticket Fare Distribution by Embarkation Port ($)', font: { color: '#f8fafc', size: 16 } },
+            paper_bgcolor: 'transparent',
+            plot_bgcolor: 'transparent',
+            font: { color: '#94a3b8' },
+            yaxis: { gridcolor: 'rgba(255,255,255,0.08)' },
+            xaxis: { gridcolor: 'transparent' },
+            margin: { t: 50, l: 60, r: 30, b: 60 }
+          };
+          Plotly.newPlot('plotly-demo-canvas', data, layout, { responsive: true, displayModeBar: false });
+        }
+      }
+    };
+
+    function switchDemo(key) {
+      document.querySelectorAll('.demo-tab').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.query-card').forEach(el => el.classList.remove('active'));
+
+      const tab = document.getElementById(`tab-${key}`);
+      const card = document.getElementById(`qcard-${key}`);
+      if (tab) tab.classList.add('active');
+      if (card) card.classList.add('active');
+
+      const config = demoConfigs[key];
+      if (config) {
+        document.getElementById('demo-code-box').textContent = config.code;
+        document.getElementById('demo-insight-text').innerHTML = config.summary;
+        config.plot();
+      }
+    }
+
+    // Initialize first demo chart on load
+    window.addEventListener('DOMContentLoaded', () => {
+      switchDemo('correlation');
+    });
+  </script>
+</body>
+</html>
